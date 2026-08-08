@@ -1,0 +1,8 @@
+{
+  "name": "Boodschappen & Recepten",
+  "short_name": "Boodschappen",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f5f7",
+  "theme_color": "#ffffff"
+}
