@@ -11,98 +11,381 @@
 <link rel="manifest" href="manifest.json">
 <title>Boodschappen & Recepten</title>
 <style>
-:root { color-scheme: light dark; --bg:#f5f5f7; --card:#fff; --text:#111; --muted:#666; --line:#ddd; }
+:root { color-scheme: light dark; --bg:#f5f5f7; --card:#fff; --text:#111; --muted:#666; --line:#ddd; --accent:#34c759; --accent-2:#0a84ff; }
 @media (prefers-color-scheme: dark) { :root{--bg:#111;--card:#1c1c1e;--text:#f5f5f7;--muted:#aaa;--line:#333;} }
 *{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);padding-bottom:86px}
-header{position:sticky;top:0;background:var(--bg);padding:18px 16px 10px;z-index:3}
-h1{font-size:28px;margin:0 0 4px}
-.sub{color:var(--muted);font-size:14px}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;background:var(--bg);padding:16px 16px 10px;z-index:3;display:flex;align-items:center;gap:10px}
+h1{font-size:28px;margin:0}
+.sub{color:var(--muted);font-size:14px;margin:2px 0 0}
 main{padding:0 14px}
 .card{background:var(--card);border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 h2{font-size:18px;margin:2px 0 10px}
-.item{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
-.item:last-child{border-bottom:none}
-.item input{width:23px;height:23px;margin-top:0;accent-color:#34c759}
-.item.done label{text-decoration:line-through;color:var(--muted)}
-.controls{display:flex;gap:8px;margin:8px 0 14px}
-button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:var(--card);color:var(--text)}
-.recipe h2{font-size:20px}
-.recipe ol,.recipe ul{padding-left:22px}
-.recipe li{margin:8px 0;line-height:1.35}
-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:8px max(12px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));z-index:5}
-nav button{flex:1;background:transparent;font-weight:600}
-nav button.active{background:var(--bg)}
 .hidden{display:none}
 .badge{font-size:12px;color:var(--muted)}
+.back{border:0;background:transparent;color:var(--accent-2);font-size:16px;font-weight:600;padding:6px 8px 6px 0;cursor:pointer;display:flex;align-items:center;gap:2px}
+
+.tile{display:flex;align-items:center;gap:16px;background:var(--card);border-radius:20px;padding:20px;margin:12px 0;box-shadow:0 1px 3px rgba(0,0,0,.06);width:100%;text-align:left;border:0;color:var(--text);cursor:pointer}
+.tile:active{transform:scale(.99)}
+.tile .emoji{font-size:34px;width:56px;height:56px;flex:0 0 56px;display:flex;align-items:center;justify-content:center;border-radius:16px;background:var(--bg)}
+.tile .t-main{font-size:20px;font-weight:700}
+.tile .t-sub{color:var(--muted);font-size:14px;margin-top:2px}
+.tile .chev{margin-left:auto;color:var(--muted);font-size:22px}
+
+.item{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:none}
+.item input{width:23px;height:23px;margin-top:0;accent-color:var(--accent)}
+.item.done label{text-decoration:line-through;color:var(--muted)}
+.controls{display:flex;gap:8px;margin:4px 0 6px;flex-wrap:wrap}
+button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:var(--card);color:var(--text);cursor:pointer}
+.weekbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 4px}
+.weekbar .wk{font-size:17px;font-weight:700}
+.weekbar .arrow{background:var(--card);width:40px;height:40px;border-radius:12px;font-size:20px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.thisweek{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--accent);border-radius:8px;padding:2px 7px;margin-left:8px;vertical-align:middle}
+
+.linkbtn{background:transparent;color:var(--accent-2);font-weight:600;padding:8px 0;font-size:15px}
+.picker{margin-top:6px;border-top:1px solid var(--line);padding-top:4px}
+.pick-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:15px}
+.pick-item:last-child{border-bottom:none}
+.pick-item input{width:22px;height:22px;accent-color:var(--accent)}
+.selchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.selchip{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:13px}
+
+.recipe h2{font-size:20px;margin:0 0 2px}
+.recipe ol,.recipe ul{padding-left:22px}
+.recipe li{margin:8px 0;line-height:1.35}
+.recipe{padding:0;overflow:hidden}
+.recipe .body{padding:14px}
+.thumb{position:relative;width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--h1),var(--h2));display:flex;align-items:center;justify-content:center;overflow:hidden}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.thumb .ph{color:#fff;font-weight:700;font-size:17px;text-align:center;padding:0 18px;text-shadow:0 1px 4px rgba(0,0,0,.25)}
+.ph-emoji{font-size:46px;line-height:1;margin-bottom:8px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))}
+
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;white-space:nowrap}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.meal-badge{display:inline-block;font-size:11px;font-weight:700;color:var(--accent-2);background:color-mix(in srgb,var(--accent-2) 14%,transparent);border-radius:8px;padding:2px 8px;margin-left:8px;vertical-align:middle}
+.empty{color:var(--muted);text-align:center;padding:28px 16px;font-size:15px}
+.src{display:inline-block;margin-top:12px;color:var(--accent-2);font-weight:600;font-size:14px;text-decoration:none}
+.search{position:relative;margin:2px 2px 4px}
+.search input{width:100%;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:11px 36px 11px 14px;font-size:16px}
+.search .clr{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);font-size:20px;padding:6px 8px}
 </style>
 </head>
 <body>
+
 <header>
-  <h1 id="pageTitle">Boodschappen</h1>
-  <div class="sub" id="subtitle">Tik af wat in je winkelwagen ligt. De vinkjes blijven bewaard.</div>
+  <button id="backBtn" class="back hidden" onclick="goHome()">‹ Start</button>
+  <div style="flex:1">
+    <h1 id="pageTitle">Boodschappen</h1>
+    <div class="sub" id="subtitle"></div>
+  </div>
 </header>
+
 <main>
-<section id="shoppingView">
-<div class="controls">
-<button onclick="hideDone()">Afgevinkt verbergen</button>
-<button onclick="resetChecks()">Alles terugzetten</button>
-</div>
-<div id="shopping"></div>
+
+<section id="homeView">
+  <button class="tile" onclick="showTab('recipes')">
+    <span class="emoji">🍳</span>
+    <span><span class="t-main">Recepten</span><span class="t-sub" id="homeRecipeSub"></span></span>
+    <span class="chev">›</span>
+  </button>
+  <button class="tile" onclick="showTab('shop')">
+    <span class="emoji">🛒</span>
+    <span><span class="t-main">Boodschappen</span><span class="t-sub" id="homeShopSub"></span></span>
+    <span class="chev">›</span>
+  </button>
 </section>
-<section id="recipesView" class="hidden"><div id="recipes"></div></section>
+
+<section id="shoppingView" class="hidden">
+  <div class="weekbar">
+    <button class="arrow" onclick="navWeek(-1)">‹</button>
+    <span class="wk" id="weekLabel"></span>
+    <button class="arrow" onclick="navWeek(1)">›</button>
+  </div>
+  <div class="card">
+    <div id="selRecipes"></div>
+    <button class="linkbtn" id="pickBtn" onclick="togglePicker()">Recepten kiezen</button>
+    <div id="picker" class="picker hidden">
+      <div class="search">
+        <input id="pickSearch" type="search" inputmode="search" placeholder="Zoek recept of ingrediënt…" autocomplete="off">
+        <button class="clr hidden" id="pickSearchClear" aria-label="Wissen">✕</button>
+      </div>
+      <div class="chips" id="pickFilter"></div>
+      <div id="pickList"></div>
+    </div>
+  </div>
+  <div id="shopWrap"></div>
+</section>
+
+<section id="recipesView" class="hidden">
+  <div class="search">
+    <input id="recipeSearch" type="search" inputmode="search" placeholder="Zoek recept of ingrediënt…" autocomplete="off">
+    <button class="clr hidden" id="searchClear" aria-label="Wissen">✕</button>
+  </div>
+  <div class="chips" id="mealFilter"></div>
+  <div id="recipes"></div>
+</section>
+
 </main>
-<nav>
-<button id="tabShop" class="active" onclick="showTab('shop')">Boodschappen</button>
-<button id="tabRecipes" onclick="showTab('recipes')">Recepten</button>
-</nav>
+
 <script>
-const shopping={"Groente & fruit": ["1 rode ui", "4 gewone uien", "2 rode paprika's", "2 puntpaprika's", "100 g wortel", "400 g broccoli", "200 g tomaten", "1 citroen", "1 appel", "500 g voorgekookte rode bieten", "400 g verse spinazie", "1 zak rucola (ca. 75 g)", "1 bol knoflook", "1 bosje verse peterselie", "1 bosje verse koriander", "1 bakje verse basilicum"], "Vlees": ["250 g kipfilet", "ca. 250 g kippendijen", "200 g kip", "75 g parmaham"], "Zuivel & gekoeld": ["1 bol mozzarella", "125 g kruidenroomkaas", "75 g geitenkaas", "100 g feta", "75 g geraspte kaas", "200 ml crème fraîche", "100 ml melk", "1 ei", "2 el yoghurt", "20 g Becel ProActiv Original"], "Pasta, rijst & aardappelen": ["250 g vegetarische ravioli", "200 g pasta", "ca. 250 g rijst totaal", "700 g krieltjes"], "Potten, blikken & sauzen": ["1 klein blik kokosmelk", "rode currypasta", "zongedroogde tomaatjes op olie", "1 pot gegrilde paprika's", "pesto", "tomatenpuree of biber salça", "kippenbouillon", "balsamicoazijn"], "Noten, kruiden & voorraad": ["50 g walnoten", "pijnboompitten", "pul biber", "gerookt paprikapoeder", "oregano", "komijn", "cajunkruiden", "laurierblaadjes", "olijfolie / bakolie", "vloeibare bakmargarine", "peper", "zout"]};
-const recipes=[{"title": "Rode curry met kip en groenten", "time": "ca. 20 min", "ingredients": ["250 g kipfilet", "1 rode ui", "1 rode paprika", "100 g wortel", "½ blik kokosmelk", "1 el rode currypasta", "verse koriander", "1 el vloeibare bakmargarine", "20 g ProActiv", "1 bouillonblokje", "ca. 150 g rijst"], "steps": ["Snijd kip, ui, paprika en wortel in reepjes.", "Bak de ui glazig. Voeg wortel en paprika toe en bak ongeveer 5 minuten.", "Bak de kip rondom bruin en voeg de groenten weer toe.", "Voeg kokosmelk, 50 ml water, currypasta en bouillonblokje toe. Laat circa 5 minuten koken.", "Roer de ProActiv er van het vuur door en serveer met rijst en koriander."]}, {"title": "Turkse traybake met kip en rijst", "time": "ca. 75 min", "ingredients": ["ca. 250 g kippendijen", "100 g rijst", "2 uien", "1-2 tenen knoflook", "2 puntpaprika's", "80 g tomaten", "ca. 200 ml kippenbouillon", "½ citroen", "1 laurierblaadje", "verse peterselie", "olijfolie, pul biber, gerookt paprikapoeder, oregano, komijn, tomatenpuree, peper en zout"], "steps": ["Verwarm de oven voor op 200 °C en spoel de rijst.", "Meng de marinade en hussel ui, knoflook en kip ermee. Voeg puntpaprika toe.", "Bak 30 minuten.", "Roer rijst en een deel van de fijngesneden paprika door de schaal.", "Voeg tomaat, laurier, citroen en bouillon toe en bak nog ongeveer 30 minuten.", "Bestrooi met peterselie."]}, {"title": "Ravioli met spinazie en mozzarella", "time": "ca. 20 min", "ingredients": ["250 g vegetarische ravioli", "400 g verse spinazie", "1 bol mozzarella", "125 g kruidenroomkaas", "2 el zongedroogde tomaatjes", "1 ui", "verse peterselie"], "steps": ["Kook de ravioli volgens de verpakking.", "Bak de ui glazig en laat de spinazie slinken.", "Roer kruidenroomkaas en zongedroogde tomaatjes erdoor.", "Meng de ravioli door de saus en verdeel de mozzarella erover.", "Garneer met peterselie."]}, {"title": "Pastasalade met geitenkaas", "time": "ca. 20 min", "ingredients": ["200 g pasta", "2 gegrilde paprika's", "75 g parmaham", "75 g geitenkaas", "1 handje rucola", "1 flinke el pesto", "2 el pijnboompitten", "verse basilicum"], "steps": ["Kook de pasta en laat afkoelen.", "Meng de pesto door de pasta.", "Voeg gegrilde paprika en parmaham toe.", "Werk af met rucola, geitenkaas, basilicum en pijnboompitten."]}, {"title": "Bietensalade met feta", "time": "ca. 10 min", "ingredients": ["1 appel", "500 g voorgekookte rode bieten", "2 el balsamicoazijn", "2 el yoghurt", "1 el citroensap", "50 g walnoten", "40 g rucola", "100 g feta", "olijfolie", "peper en zout"], "steps": ["Snijd bieten en appel.", "Meng met citroensap, balsamico, yoghurt, peper en zout.", "Meng walnoten, rucola en feta erdoor.", "Besprenkel met olijfolie."]}, {"title": "Ovenschotel met kip en broccoli", "time": "ca. 70 min", "ingredients": ["200 g kip", "700 g krieltjes", "400 g broccoli", "1 rode paprika", "1 ui", "1 el cajunkruiden", "1 tl gerookt paprikapoeder", "75 g geraspte kaas", "200 ml crème fraîche", "1 ei", "100 ml melk", "peper, zout en olie/boter"], "steps": ["Verwarm de oven voor op 180 °C.", "Kook krieltjes en broccoli ongeveer 5 minuten voor.", "Fruit ui, voeg paprika en daarna kip en kruiden toe.", "Meng alles in een ingevette ovenschaal.", "Klop crème fraîche met ei, melk, peper en zout en giet erover. Bestrooi met kaas.", "Bak circa 40 minuten."]}];
-const storeKey='ruud-boodschappen-checks-v1';
-let checks=JSON.parse(localStorage.getItem(storeKey)||'{}');
-let doneHidden=false;
+/* ---------- DATA ----------
+   Ingrediënt = {q: hoeveelheid of null, u: eenheid, n: naam, c: categorie}
+   Categorieën: groente, vlees, zuivel, pasta, pot, voorraad
+   De app telt gelijke ingrediënten (zelfde naam + eenheid) automatisch op. */
+
+const recipes = [
+  { id:"rode-curry", meal:"diner", emoji:"🍛", source:"https://www.pro-activ.com/nl-be/recept/rode-curry-met-kip-en-groenten-194181",
+    title:"Rode curry met kip en groenten", time:"ca. 20 min",
+    ing:[{q:250,u:"g",n:"kipfilet",c:"vlees"},{q:1,u:"",n:"rode ui",c:"groente"},{q:1,u:"",n:"rode paprika",c:"groente"},{q:100,u:"g",n:"wortel",c:"groente"},{q:0.5,u:"blik",n:"kokosmelk",c:"pot"},{q:1,u:"el",n:"rode currypasta",c:"pot"},{q:null,u:"",n:"verse koriander",c:"groente"},{q:1,u:"el",n:"vloeibare bakmargarine",c:"zuivel"},{q:20,u:"g",n:"ProActiv",c:"zuivel"},{q:1,u:"",n:"bouillonblokje",c:"voorraad"},{q:150,u:"g",n:"rijst",c:"pasta"}],
+    steps:["Snijd de kip in reepjes en snijd ook de ui, paprika en wortel in stukjes.","Verhit de vloeibare margarine in een grote pan en roerbak de ui glazig. Voeg wortel en paprika toe en bak ze ongeveer 5 minuten op middelhoog vuur.","Schep de groenten uit de pan. Bak de kip in circa 5 minuten rondom bruin en doe de groenten er weer bij.","Voeg de kokosmelk, 50 ml water, de currypasta en het bouillonblokje toe en laat 5 minuten koken.","Haal de pan van het vuur, roer de ProActiv erdoor en serveer met rijst. Strooi verse koriander over elk bord."] },
+
+  { id:"turkse-traybake", meal:"diner", emoji:"🍗", source:"https://www.culy.nl/recepten/turkse-traybake-met-kip/",
+    title:"Turkse traybake met kip en rijst", time:"ca. 75 min",
+    ing:[{q:250,u:"g",n:"kippendijen",c:"vlees"},{q:100,u:"g",n:"rijst",c:"pasta"},{q:2,u:"",n:"ui",c:"groente"},{q:2,u:"teen",n:"knoflook",c:"groente"},{q:2,u:"",n:"puntpaprika",c:"groente"},{q:80,u:"g",n:"tomaten",c:"groente"},{q:200,u:"ml",n:"kippenbouillon",c:"pot"},{q:0.5,u:"",n:"citroen",c:"groente"},{q:1,u:"",n:"laurierblaadje",c:"voorraad"},{q:null,u:"",n:"verse peterselie",c:"groente"},{q:null,u:"",n:"olijfolie",c:"voorraad"},{q:null,u:"",n:"pul biber",c:"voorraad"},{q:null,u:"",n:"gerookt paprikapoeder",c:"voorraad"},{q:null,u:"",n:"oregano",c:"voorraad"},{q:null,u:"",n:"komijn",c:"voorraad"},{q:null,u:"",n:"tomatenpuree",c:"pot"},{q:null,u:"",n:"peper",c:"voorraad"},{q:null,u:"",n:"zout",c:"voorraad"}],
+    steps:["Verwarm de oven voor op 200 °C en spoel de rijst.","Meng de marinade en hussel ui, knoflook en kip ermee. Voeg puntpaprika toe.","Bak 30 minuten.","Roer rijst en een deel van de fijngesneden paprika door de schaal.","Voeg tomaat, laurier, citroen en bouillon toe en bak nog ongeveer 30 minuten.","Bestrooi met peterselie."] },
+
+  { id:"ravioli-spinazie", meal:"diner", emoji:"🥟", source:"https://www.leukerecepten.nl/recepten/ravioli-met-spinazie-en-mozzarella/",
+    title:"Ravioli met spinazie en mozzarella", time:"ca. 20 min",
+    ing:[{q:250,u:"g",n:"vegetarische ravioli",c:"pasta"},{q:400,u:"g",n:"verse spinazie",c:"groente"},{q:1,u:"bol",n:"mozzarella",c:"zuivel"},{q:125,u:"g",n:"kruidenroomkaas",c:"zuivel"},{q:2,u:"el",n:"zongedroogde tomaatjes",c:"pot"},{q:1,u:"",n:"ui",c:"groente"},{q:null,u:"",n:"verse peterselie",c:"groente"}],
+    steps:["Kook de ravioli volgens de verpakking. Snijd ondertussen de ui fijn en bak deze in een grote koekenpan glazig.","Voeg de verse spinazie toe en laat die slinken.","Roer de kruidenroomkaas erdoor en meng goed. Snijd de zongedroogde tomaatjes fijn en voeg ze toe.","Giet de gare ravioli af en schep ze door het spinaziemengsel.","Scheur de mozzarella in stukjes en verdeel over de ravioli. Garneer met verse peterselie."] },
+
+  { id:"pastasalade-geitenkaas", meal:"lunch", emoji:"🍝", source:"https://www.leukerecepten.nl/recepten/pastasalade-met-geitenkaas/",
+    title:"Pastasalade met geitenkaas", time:"ca. 20 min",
+    ing:[{q:200,u:"g",n:"pasta",c:"pasta"},{q:2,u:"",n:"gegrilde paprika",c:"pot"},{q:75,u:"g",n:"parmaham",c:"vlees"},{q:75,u:"g",n:"geitenkaas",c:"zuivel"},{q:1,u:"handje",n:"rucola",c:"groente"},{q:1,u:"el",n:"pesto",c:"pot"},{q:2,u:"el",n:"pijnboompitten",c:"voorraad"},{q:null,u:"",n:"verse basilicum",c:"groente"}],
+    steps:["Kook de pasta volgens de verpakking, giet af en spoel koud af.","Schep de pesto door de lauwwarme of koude pasta.","Snijd de gegrilde paprika in reepjes en meng die met de parmaham door de pasta.","Voeg als laatste de rucola toe en bestrooi met geitenkaas, basilicum en pijnboompitten."] },
+
+  { id:"bietensalade-feta", meal:"lunch", emoji:"🥗", source:"https://www.leukerecepten.nl/recepten/bietensalade/",
+    title:"Bietensalade met feta", time:"ca. 10 min",
+    ing:[{q:1,u:"",n:"appel",c:"groente"},{q:500,u:"g",n:"voorgekookte rode bieten",c:"groente"},{q:2,u:"el",n:"balsamicoazijn",c:"pot"},{q:2,u:"el",n:"yoghurt",c:"zuivel"},{q:1,u:"el",n:"citroensap",c:"voorraad"},{q:50,u:"g",n:"walnoten",c:"voorraad"},{q:40,u:"g",n:"rucola",c:"groente"},{q:100,u:"g",n:"feta",c:"zuivel"},{q:null,u:"",n:"olijfolie",c:"voorraad"},{q:null,u:"",n:"peper",c:"voorraad"},{q:null,u:"",n:"zout",c:"voorraad"}],
+    steps:["Laat de bieten uitlekken en snijd ze in stukjes. Schil de appel en snijd die ook in stukjes.","Doe de bieten en appel in een kom en meng met citroensap, balsamico, yoghurt, peper en zout.","Meng de walnoten, rucola en feta er losjes door.","Besprenkel met olijfolie en serveer."] },
+
+  { id:"ovenschotel-kip-broccoli", meal:"diner", emoji:"🥘", source:"https://www.leukerecepten.nl/recepten/ovenschotel-met-kip-en-broccoli/",
+    title:"Ovenschotel met kip en broccoli", time:"ca. 70 min",
+    ing:[{q:200,u:"g",n:"kip",c:"vlees"},{q:700,u:"g",n:"krieltjes",c:"pasta"},{q:400,u:"g",n:"broccoli",c:"groente"},{q:1,u:"",n:"rode paprika",c:"groente"},{q:1,u:"",n:"ui",c:"groente"},{q:1,u:"el",n:"cajunkruiden",c:"voorraad"},{q:1,u:"tl",n:"gerookt paprikapoeder",c:"voorraad"},{q:75,u:"g",n:"geraspte kaas",c:"zuivel"},{q:200,u:"ml",n:"crème fraîche",c:"zuivel"},{q:1,u:"",n:"ei",c:"zuivel"},{q:100,u:"ml",n:"melk",c:"zuivel"},{q:null,u:"",n:"peper",c:"voorraad"},{q:null,u:"",n:"zout",c:"voorraad"},{q:null,u:"",n:"olie/boter",c:"voorraad"}],
+    steps:["Verwarm de oven voor op 180 °C.","Snijd de broccoli in roosjes. Snijd de harde delen van de stam weg en snijd de rest in stukjes.","Kook de krieltjes en de stukjes broccolistronk ongeveer 5 minuten voor in een pan met water en laat goed uitlekken.","Snipper de ui en fruit deze in een pan met een beetje olie of boter.","Voeg de paprika in blokjes toe en bak kort mee.","Voeg de kip in stukjes toe met de cajunkruiden en het paprikapoeder en roerbak een paar minuten.","Schep de voorgekookte krieltjes en broccoli erdoor en meng goed.","Doe alles in een grote ingevette ovenschaal.","Klop de crème fraîche los en roer het ei en de melk erdoor met een snufje peper en zout.","Giet het roommengsel over de schaal.","Bestrooi met kaas en zet circa 40 minuten in de oven.","Controleer of alles gaar is en laat de schotel een paar minuten rusten voor het serveren."] }
+];
+
+const CATS=[["groente","Groente & fruit"],["vlees","Vlees"],["zuivel","Zuivel & gekoeld"],["pasta","Pasta, rijst & aardappelen"],["pot","Potten, blikken & sauzen"],["voorraad","Noten, kruiden & voorraad"]];
+const recipeById=Object.fromEntries(recipes.map(r=>[r.id,r]));
+
+/* ---------- HELPERS ---------- */
+function isoWeek(d){
+  const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day);
+  const ys=new Date(Date.UTC(t.getUTCFullYear(),0,1));
+  return {year:t.getUTCFullYear(), week:Math.ceil(((t-ys)/86400000+1)/7)};
+}
+function fmtQty(q){
+  if(q==null) return '';
+  const fr={0.25:'¼',0.5:'½',0.75:'¾'};
+  const whole=Math.floor(q+1e-9), rem=+(q-whole).toFixed(2);
+  if(fr[rem]) return (whole>0?whole+' ':'')+fr[rem];
+  return String(+q.toFixed(2));
+}
+function ingText(g){ return [fmtQty(g.q), g.u, g.n].filter(Boolean).join(' '); }
+function shopText(it){ return it.hasNum ? [fmtQty(it.q), it.u, it.n].filter(Boolean).join(' ') : it.n; }
+
+const now=isoWeek(new Date());
+let viewDate=new Date();
+function shiftWeek(d,n){ const x=new Date(d); x.setDate(x.getDate()+n*7); return x; }
+
+/* ---------- STORAGE ---------- */
+let plannerWeeks=JSON.parse(localStorage.getItem('planner-weeks-v1')||'{}');
+let checksAll=JSON.parse(localStorage.getItem('boodschappen-checks-v3')||'{}');
+let doneHidden=false, pickerOpen=false;
+let pickMeal='alle', pickQuery='';
+function savePlanner(){ localStorage.setItem('planner-weeks-v1',JSON.stringify(plannerWeeks)); }
+function saveChecks(){ localStorage.setItem('boodschappen-checks-v3',JSON.stringify(checksAll)); }
+
+/* ---------- SHOPPING BUILD ---------- */
+function buildShopping(ids){
+  const map={}, order=[];
+  ids.forEach(id=>{ const r=recipeById[id]; if(!r) return;
+    r.ing.forEach(g=>{
+      const k=g.c+'|'+g.n+'|'+g.u;
+      if(!map[k]){ map[k]={q:0,u:g.u,n:g.n,c:g.c,hasNum:false}; order.push(k); }
+      if(g.q!=null){ map[k].q+=g.q; map[k].hasNum=true; }
+    });
+  });
+  const cats={};
+  order.forEach(k=>{ const it=map[k]; (cats[it.c]=cats[it.c]||[]).push(it); });
+  return cats;
+}
+
+/* ---------- SHOPPING VIEW ---------- */
+function curKey(){ const yw=isoWeek(viewDate); return yw.year+'-W'+yw.week; }
 
 function renderShopping(){
-  const root=document.getElementById('shopping'); root.innerHTML='';
-  let index=0;
-  Object.entries(shopping).forEach(([cat,items])=>{
+  const yw=isoWeek(viewDate), key=curKey();
+  document.getElementById('weekLabel').innerHTML='Week '+yw.week+' · '+yw.year+((yw.year===now.year&&yw.week===now.week)?'<span class="thisweek">deze week</span>':'');
+  pickerOpen=false;
+  document.getElementById('picker').classList.add('hidden');
+  document.getElementById('pickBtn').textContent='Recepten kiezen';
+  renderSel(key); renderPicker(key); renderShopWrap(key);
+}
+function navWeek(dir){ viewDate=shiftWeek(viewDate,dir); renderShopping(); }
+
+function renderSel(key){
+  const el=document.getElementById('selRecipes'), ids=plannerWeeks[key]||[];
+  if(!ids.length){ el.innerHTML='<div class="badge">Nog geen recepten gekozen voor deze week.</div>'; return; }
+  el.innerHTML='<div class="selchips">'+ids.map(id=>{const r=recipeById[id];return r?'<span class="selchip">'+r.emoji+' '+r.title+'</span>':'';}).join('')+'</div>';
+}
+function pickMatches(r){
+  if(!pickQuery) return true;
+  const q=pickQuery.toLowerCase();
+  return r.title.toLowerCase().includes(q) || r.ing.some(g=>g.n.toLowerCase().includes(q));
+}
+function renderPickChips(){
+  const bar=document.getElementById('pickFilter'); bar.innerHTML='';
+  [['alle','Alle'],...Object.entries(MEALS)].forEach(([k,label])=>{
+    const b=document.createElement('button');
+    b.className='chip'+(pickMeal===k?' active':'');
+    b.textContent=label;
+    b.onclick=()=>{ pickMeal=k; renderPickChips(); renderPickList(curKey()); };
+    bar.appendChild(b);
+  });
+}
+function renderPickList(key){
+  const el=document.getElementById('pickList'), ids=plannerWeeks[key]||[];
+  const list=recipes.filter(r=>(pickMeal==='alle'||r.meal===pickMeal) && pickMatches(r));
+  if(!list.length){ el.innerHTML='<div class="empty">Geen recepten gevonden.</div>'; return; }
+  el.innerHTML=list.map(r=>'<label class="pick-item"><input type="checkbox" data-id="'+r.id+'"'+(ids.includes(r.id)?' checked':'')+'><span>'+r.emoji+' '+r.title+'</span></label>').join('');
+  el.querySelectorAll('input').forEach(cb=>{ cb.onchange=()=>toggleRecipeInWeek(key,cb.dataset.id,cb.checked); });
+}
+function renderPicker(key){ renderPickChips(); renderPickList(key); }
+function togglePicker(){
+  pickerOpen=!pickerOpen;
+  document.getElementById('picker').classList.toggle('hidden',!pickerOpen);
+  document.getElementById('pickBtn').textContent=pickerOpen?'Klaar met kiezen':'Recepten kiezen';
+}
+function toggleRecipeInWeek(key,id,on){
+  const set=new Set(plannerWeeks[key]||[]);
+  if(on) set.add(id); else set.delete(id);
+  if(set.size) plannerWeeks[key]=[...set]; else delete plannerWeeks[key];
+  savePlanner(); renderSel(key); renderShopWrap(key);
+}
+function initPickSearch(){
+  const si=document.getElementById('pickSearch'), sc=document.getElementById('pickSearchClear');
+  si.oninput=()=>{ pickQuery=si.value.trim(); sc.classList.toggle('hidden',pickQuery===''); renderPickList(curKey()); };
+  sc.onclick=()=>{ si.value=''; pickQuery=''; sc.classList.add('hidden'); renderPickList(curKey()); si.focus(); };
+}
+
+function renderShopWrap(key){
+  const wrap=document.getElementById('shopWrap'); wrap.innerHTML='';
+  const ids=plannerWeeks[key]||[];
+  if(!ids.length){ wrap.innerHTML='<div class="empty">Kies hierboven recepten om je boodschappenlijst te maken.</div>'; return; }
+  const controls=document.createElement('div'); controls.className='controls';
+  const hb=document.createElement('button'); hb.textContent=doneHidden?'Alles tonen':'Afgevinkt verbergen'; hb.onclick=hideDone;
+  const rb=document.createElement('button'); rb.textContent='Alles terugzetten'; rb.onclick=resetChecks;
+  controls.append(hb,rb); wrap.appendChild(controls);
+
+  const cats=buildShopping(ids);
+  const checks=checksAll[key]||(checksAll[key]={});
+  let idx=0;
+  CATS.forEach(([ckey,label])=>{
+    const items=cats[ckey]; if(!items||!items.length) return;
     const card=document.createElement('div'); card.className='card';
-    const h=document.createElement('h2'); h.textContent=cat; card.appendChild(h);
-    items.forEach(text=>{
-      const id='i'+(index++);
-      const row=document.createElement('div'); row.className='item'+(checks[id]?' done':'');
-      if(doneHidden && checks[id]) row.style.display='none';
-      const cb=document.createElement('input'); cb.type='checkbox'; cb.id=id; cb.checked=!!checks[id];
-      cb.onchange=()=>{checks[id]=cb.checked; localStorage.setItem(storeKey,JSON.stringify(checks)); renderShopping();};
-      const lab=document.createElement('label'); lab.htmlFor=id; lab.textContent=text;
+    const h=document.createElement('h2'); h.textContent=label; card.appendChild(h);
+    items.forEach(it=>{
+      const skey=it.c+'|'+it.n+'|'+it.u, cid='ck'+(idx++);
+      const row=document.createElement('div'); row.className='item'+(checks[skey]?' done':'');
+      if(doneHidden && checks[skey]) row.style.display='none';
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.id=cid; cb.checked=!!checks[skey];
+      cb.onchange=()=>{ checks[skey]=cb.checked; saveChecks(); renderShopWrap(key); };
+      const lab=document.createElement('label'); lab.htmlFor=cid; lab.textContent=shopText(it);
       row.append(cb,lab); card.appendChild(row);
     });
+    wrap.appendChild(card);
+  });
+}
+function hideDone(){ doneHidden=!doneHidden; renderShopWrap(curKey()); }
+function resetChecks(){
+  const key=curKey(), yw=isoWeek(viewDate);
+  if(confirm('Alle vinkjes voor week '+yw.week+' wissen?')){ checksAll[key]={}; saveChecks(); renderShopWrap(key); }
+}
+
+/* ---------- RECIPES VIEW ---------- */
+const MEALS={ontbijt:"Ontbijt",lunch:"Lunch",diner:"Diner",tussendoor:"Tussendoor"};
+let mealFilter='alle', searchQuery='';
+
+function renderChips(){
+  const bar=document.getElementById('mealFilter'); bar.innerHTML='';
+  [['alle','Alle'],...Object.entries(MEALS)].forEach(([key,label])=>{
+    const b=document.createElement('button');
+    b.className='chip'+(mealFilter===key?' active':'');
+    b.textContent=label;
+    b.onclick=()=>{ mealFilter=key; renderChips(); renderRecipes(); };
+    bar.appendChild(b);
+  });
+}
+function matchesSearch(r){
+  if(!searchQuery) return true;
+  const q=searchQuery.toLowerCase();
+  return r.title.toLowerCase().includes(q) || r.ing.some(g=>g.n.toLowerCase().includes(q));
+}
+function hues(str){ let h=0; for(let i=0;i<str.length;i++) h=(h*31+str.charCodeAt(i))%360; return [h,(h+40)%360]; }
+
+function renderRecipes(){
+  const root=document.getElementById('recipes'); root.innerHTML='';
+  const list=recipes.filter(r=>(mealFilter==='alle'||r.meal===mealFilter) && matchesSearch(r));
+  if(!list.length){
+    root.innerHTML='<div class="empty">'+(searchQuery?'Geen recepten gevonden voor \u201c'+searchQuery+'\u201d.':'Nog geen recepten in deze categorie.<br>Stuur er een naar mij, dan zet ik \u2019m erbij.')+'</div>';
+    return;
+  }
+  list.forEach(r=>{
+    const [h1,h2]=hues(r.title);
+    const card=document.createElement('article'); card.className='card recipe';
+    const img=document.createElement('img'); img.loading='lazy'; img.alt=r.title; img.src='images/'+r.id+'.jpg'; img.onerror=function(){this.remove();};
+    const thumb=document.createElement('div'); thumb.className='thumb';
+    thumb.style.setProperty('--h1','hsl('+h1+' 55% 55%)');
+    thumb.style.setProperty('--h2','hsl('+h2+' 55% 42%)');
+    const ph=document.createElement('div'); ph.className='ph';
+    ph.innerHTML='<div class="ph-emoji">'+(r.emoji||'🍽️')+'</div>'+r.title;
+    thumb.append(ph,img);
+    const body=document.createElement('div'); body.className='body';
+    const mealTag=r.meal?'<span class="meal-badge">'+MEALS[r.meal]+'</span>':'';
+    body.innerHTML='<h2>'+r.title+mealTag+'</h2><div class="badge">'+r.time+' · 2 personen</div>'+
+      '<h3>Ingrediënten</h3><ul>'+r.ing.map(g=>'<li>'+ingText(g)+'</li>').join('')+'</ul>'+
+      '<h3>Bereiding</h3><ol>'+r.steps.map(x=>'<li>'+x+'</li>').join('')+'</ol>'+
+      (r.source?'<a class="src" href="'+r.source+'" target="_blank" rel="noopener noreferrer">Bekijk origineel recept ↗</a>':'');
+    card.append(thumb,body);
     root.appendChild(card);
   });
 }
-function hideDone(){doneHidden=!doneHidden; renderShopping(); event.target.textContent=doneHidden?'Alles tonen':'Afgevinkt verbergen';}
-function resetChecks(){ if(confirm('Alle vinkjes wissen?')){checks={};localStorage.setItem(storeKey,'{}');renderShopping();}}
-function renderRecipes(){
- const root=document.getElementById('recipes'); root.innerHTML='';
- recipes.forEach(r=>{
-   const card=document.createElement('article'); card.className='card recipe';
-   card.innerHTML=`<h2>${r.title}</h2><div class="badge">${r.time} · 2 personen</div>
-   <h3>Ingrediënten</h3><ul>${r.ingredients.map(x=>`<li>${x}</li>`).join('')}</ul>
-   <h3>Bereiding</h3><ol>${r.steps.map(x=>`<li>${x}</li>`).join('')}</ol>`;
-   root.appendChild(card);
- });
+
+/* ---------- NAV ---------- */
+function setHeader(view){
+  const t=document.getElementById('pageTitle'), s=document.getElementById('subtitle'), b=document.getElementById('backBtn');
+  if(view==='home'){ t.textContent='Boodschappen & Recepten'; s.textContent='Kies waar je heen wilt.'; b.classList.add('hidden'); }
+  if(view==='shop'){ t.textContent='Boodschappen'; s.textContent='Kies je recepten voor de week; de lijst wordt automatisch samengesteld.'; b.classList.remove('hidden'); }
+  if(view==='recipes'){ t.textContent='Recepten'; s.textContent='Alle recepten voor 2 personen.'; b.classList.remove('hidden'); }
 }
+function show(id){ ['homeView','shoppingView','recipesView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id)); }
+function goHome(){ show('homeView'); setHeader('home'); refreshHome(); window.scrollTo(0,0); }
 function showTab(tab){
- const shop=tab==='shop';
- document.getElementById('shoppingView').classList.toggle('hidden',!shop);
- document.getElementById('recipesView').classList.toggle('hidden',shop);
- document.getElementById('tabShop').classList.toggle('active',shop);
- document.getElementById('tabRecipes').classList.toggle('active',!shop);
- document.getElementById('pageTitle').textContent=shop?'Boodschappen':'Recepten';
- document.getElementById('subtitle').textContent=shop?'Tik af wat in je winkelwagen ligt. De vinkjes blijven bewaard.':'Alle recepten voor 2 personen.';
+  if(tab==='shop'){ show('shoppingView'); setHeader('shop'); renderShopping(); }
+  else { show('recipesView'); setHeader('recipes'); }
+  window.scrollTo(0,0);
 }
-renderShopping();renderRecipes();
+
+/* ---------- INIT ---------- */
+function refreshHome(){
+  const ck=now.year+'-W'+now.week, n=(plannerWeeks[ck]||[]).length;
+  document.getElementById('homeShopSub').textContent='Week '+now.week+' · '+now.year+(n?' · '+n+' recept'+(n>1?'en':''):'');
+  document.getElementById('homeRecipeSub').textContent=recipes.length+' recepten';
+}
+const searchInput=document.getElementById('recipeSearch'), searchClear=document.getElementById('searchClear');
+searchInput.oninput=()=>{ searchQuery=searchInput.value.trim(); searchClear.classList.toggle('hidden',searchQuery===''); renderRecipes(); };
+searchClear.onclick=()=>{ searchInput.value=''; searchQuery=''; searchClear.classList.add('hidden'); renderRecipes(); searchInput.focus(); };
+
+renderChips();
+renderRecipes();
+initPickSearch();
+goHome();
+
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>
