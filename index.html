@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png" type="image/png">
 <title>Boodschappen & Recepten</title>
 <style>
 :root { color-scheme: light dark; --bg:#f5f5f7; --card:#fff; --text:#111; --muted:#666; --line:#ddd; --accent:#34c759; --accent-2:#0a84ff; }
@@ -93,6 +95,17 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .selchip .mini{display:inline-flex;align-items:center;gap:1px;margin:0 2px}
 .selchip .mini button{width:26px;height:26px;border-radius:999px;background:var(--bg);color:var(--text);font-size:17px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center}
 .selchip .mini .n{min-width:22px;text-align:center;font-size:12px;font-weight:700;color:var(--muted)}
+.item .have{border:0;background:transparent;color:var(--muted);font-size:16px;padding:2px 6px;flex:0 0 auto}
+.pantrycard h2{display:flex;align-items:center;gap:8px}
+.pantry-note{display:block;margin:-4px 0 6px}
+.additem select{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:0 8px;font-size:15px;flex:0 0 auto;max-width:42%}
+.actionbtn{background:var(--accent-2);color:#fff;font-weight:600}
+.linkbtn.copyweek{padding:6px 0}
+.surprise{display:block;width:100%;background:var(--card);color:var(--text);font-weight:600;font-size:15px;border-radius:12px;padding:12px;margin:2px 0 8px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.surprise:active{transform:scale(.99)}
+.note-wrap{margin:12px 0 2px}
+.note-wrap label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.note-wrap textarea{width:100%;min-height:44px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:9px 11px;font-size:15px;font-family:inherit;resize:vertical}
 </style>
 </head>
 <body>
@@ -128,6 +141,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
   </div>
   <div class="card">
     <div id="selRecipes"></div>
+    <button class="linkbtn copyweek hidden" id="copyWeekBtn" onclick="copyPrevWeek()"></button>
     <button class="linkbtn" id="pickBtn" onclick="togglePicker()">Recepten kiezen</button>
     <div id="picker" class="picker hidden">
       <div class="search">
@@ -147,6 +161,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <button class="clr hidden" id="searchClear" aria-label="Wissen">✕</button>
   </div>
   <div class="chips" id="mealFilter"></div>
+  <button class="surprise" onclick="surprise()">🎲 Wat eten we vandaag?</button>
   <div id="recipes"></div>
 </section>
 
@@ -225,6 +240,8 @@ let checksAll=JSON.parse(localStorage.getItem('boodschappen-checks-v3')||'{}');
 let manualAll=JSON.parse(localStorage.getItem('planner-manual-v1')||'{}');
 let hiddenRecipes=JSON.parse(localStorage.getItem('hidden-recipes-v1')||'[]');
 let weekServings=JSON.parse(localStorage.getItem('week-servings-v1')||'{}');
+let pantry=JSON.parse(localStorage.getItem('pantry-v1')||'[]');
+let recipeNotes=JSON.parse(localStorage.getItem('recipe-notes-v1')||'{}');
 let doneHidden=false, pickerOpen=false;
 let pickMeal='alle', pickQuery='';
 function savePlanner(){ localStorage.setItem('planner-weeks-v1',JSON.stringify(plannerWeeks)); }
@@ -232,7 +249,13 @@ function saveChecks(){ localStorage.setItem('boodschappen-checks-v3',JSON.string
 function saveManual(){ localStorage.setItem('planner-manual-v1',JSON.stringify(manualAll)); }
 function saveHidden(){ localStorage.setItem('hidden-recipes-v1',JSON.stringify(hiddenRecipes)); }
 function saveWeekServings(){ localStorage.setItem('week-servings-v1',JSON.stringify(weekServings)); }
+function savePantry(){ localStorage.setItem('pantry-v1',JSON.stringify(pantry)); }
+function saveNotes(){ localStorage.setItem('recipe-notes-v1',JSON.stringify(recipeNotes)); }
 function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+/* ---------- VOORRAADKAST (heb ik altijd/al in huis) ---------- */
+function addToPantry(n){ if(!pantry.includes(n)) pantry.push(n); savePantry(); }
+function removeFromPantry(n){ pantry=pantry.filter(x=>x!==n); savePantry(); }
 
 /* ---------- PERSONEN (standaard 2; per week per recept in te stellen) ---------- */
 const BASE_SERV=2, MIN_SERV=1, MAX_SERV=20;
@@ -265,6 +288,7 @@ function buildShopping(key,ids){
   ids.forEach(id=>{ const r=recipeById[id]; if(!r || hiddenRecipes.includes(id)) return;
     const s=getWeekServings(key,id);
     r.ing.forEach(g=>{
+      if(pantry.includes(g.n)) return;
       const k=g.c+'|'+g.n+'|'+g.u;
       if(!map[k]){ map[k]={q:0,u:g.u,n:g.n,c:g.c,hasNum:false}; order.push(k); }
       if(g.q!=null){ map[k].q+=g.q*s/BASE_SERV; map[k].hasNum=true; }
@@ -284,6 +308,9 @@ function renderShopping(){
   pickerOpen=false;
   document.getElementById('picker').classList.add('hidden');
   document.getElementById('pickBtn').textContent='Recepten kiezen';
+  const cw=document.getElementById('copyWeekBtn'), src=plannerWeeks[prevWeekKey()]||[];
+  if(src.length){ cw.classList.remove('hidden'); cw.textContent='↩︎ Kopieer vorige week ('+src.length+' recept'+(src.length>1?'en':'')+')'; }
+  else cw.classList.add('hidden');
   renderSel(key); renderPicker(key); renderShopWrap(key);
 }
 function navWeek(dir){ viewDate=shiftWeek(viewDate,dir); renderShopping(); }
@@ -356,12 +383,14 @@ function renderShopWrap(key){
 
   if(ids.length || manual.length){
     const controls=document.createElement('div'); controls.className='controls';
+    const sb=document.createElement('button'); sb.className='actionbtn'; sb.textContent='📤 Deel lijst'; sb.onclick=()=>shareList(key);
     const hb=document.createElement('button'); hb.textContent=doneHidden?'Alles tonen':'Afgevinkt verbergen'; hb.onclick=hideDone;
     const rb=document.createElement('button'); rb.textContent='Alles terugzetten'; rb.onclick=resetChecks;
-    controls.append(hb,rb); wrap.appendChild(controls);
+    controls.append(sb,hb,rb); wrap.appendChild(controls);
   }
 
-  function addRow(card, labelText, skey, delFn){
+  function addRow(card, labelText, skey, opts){
+    opts=opts||{};
     const cid='ck'+(seq++);
     const row=document.createElement('div'); row.className='item'+(checks[skey]?' done':'');
     if(doneHidden && checks[skey]) row.style.display='none';
@@ -369,37 +398,96 @@ function renderShopWrap(key){
     cb.onchange=()=>{ checks[skey]=cb.checked; saveChecks(); row.classList.toggle('done',cb.checked); if(doneHidden&&cb.checked) row.style.display='none'; };
     const lab=document.createElement('label'); lab.className='lab'; lab.htmlFor=cid; lab.textContent=labelText;
     row.append(cb,lab);
-    if(delFn){ const del=document.createElement('button'); del.className='del'; del.textContent='✕'; del.setAttribute('aria-label','Verwijderen'); del.onclick=delFn; row.append(del); }
+    if(opts.pantryName){ const hv=document.createElement('button'); hv.className='have'; hv.textContent='🏠'; hv.title='Heb ik al in huis'; hv.setAttribute('aria-label','Heb ik al in huis'); hv.onclick=()=>{ addToPantry(opts.pantryName); renderShopWrap(key); }; row.append(hv); }
+    if(opts.delFn){ const del=document.createElement('button'); del.className='del'; del.textContent='✕'; del.setAttribute('aria-label','Verwijderen'); del.onclick=opts.delFn; row.append(del); }
     card.appendChild(row);
   }
 
-  if(ids.length){
-    const cats=buildShopping(key,ids);
-    CATS.forEach(([ckey,label])=>{
-      const items=cats[ckey]; if(!items||!items.length) return;
-      const card=document.createElement('div'); card.className='card';
-      const h=document.createElement('h2'); h.textContent=label; card.appendChild(h);
-      items.forEach(it=>addRow(card, shopText(it), it.c+'|'+it.n+'|'+it.u));
-      wrap.appendChild(card);
-    });
-  }
+  const cats = ids.length ? buildShopping(key,ids) : {};
+  const manByCat={}, manOther=[];
+  manual.forEach(m=>{ if(m.c && CATS.some(c=>c[0]===m.c)) (manByCat[m.c]=manByCat[m.c]||[]).push(m); else manOther.push(m); });
+  const delMan=(m)=>()=>{ manualAll[key]=(manualAll[key]||[]).filter(x=>x.id!==m.id); if(!manualAll[key].length) delete manualAll[key]; saveManual(); renderShopWrap(key); };
+
+  CATS.forEach(([ckey,label])=>{
+    const recItems=cats[ckey]||[], manItems=manByCat[ckey]||[];
+    if(!recItems.length && !manItems.length) return;
+    const card=document.createElement('div'); card.className='card';
+    const h=document.createElement('h2'); h.textContent=label; card.appendChild(h);
+    recItems.forEach(it=>addRow(card, shopText(it), it.c+'|'+it.n+'|'+it.u, {pantryName:it.n}));
+    manItems.forEach(m=>addRow(card, m.t, 'm|'+m.id, {delFn:delMan(m)}));
+    wrap.appendChild(card);
+  });
 
   const mcard=document.createElement('div'); mcard.className='card';
   const mh=document.createElement('h2'); mh.textContent='Zelf toegevoegd'; mcard.appendChild(mh);
   const add=document.createElement('div'); add.className='additem';
   const inp=document.createElement('input'); inp.type='text'; inp.placeholder='Bijv. wc-papier'; inp.autocomplete='off';
+  const sel=document.createElement('select'); sel.setAttribute('aria-label','Categorie');
+  sel.innerHTML='<option value="">Overig</option>'+CATS.map(c=>'<option value="'+c[0]+'">'+c[1]+'</option>').join('');
   const addBtn=document.createElement('button'); addBtn.textContent='Toevoegen';
-  const doAdd=()=>{ const t=inp.value.trim(); if(!t) return; (manualAll[key]=manualAll[key]||[]).push({id:genId(),t}); saveManual(); renderShopWrap(key); const ni=document.querySelector('#shopWrap .additem input'); if(ni) ni.focus(); };
+  const doAdd=()=>{ const t=inp.value.trim(); if(!t) return; (manualAll[key]=manualAll[key]||[]).push({id:genId(),t,c:sel.value||''}); saveManual(); renderShopWrap(key); const ni=document.querySelector('#shopWrap .additem input'); if(ni) ni.focus(); };
   addBtn.onclick=doAdd;
   inp.onkeydown=(e)=>{ if(e.key==='Enter') doAdd(); };
-  add.append(inp,addBtn); mcard.appendChild(add);
-  manual.forEach(m=>addRow(mcard, m.t, 'm|'+m.id, ()=>{ manualAll[key]=(manualAll[key]||[]).filter(x=>x.id!==m.id); if(!manualAll[key].length) delete manualAll[key]; saveManual(); renderShopWrap(key); }));
+  add.append(inp,sel,addBtn); mcard.appendChild(add);
+  manOther.forEach(m=>addRow(mcard, m.t, 'm|'+m.id, {delFn:delMan(m)}));
   wrap.appendChild(mcard);
+
+  if(pantry.length){
+    const pcard=document.createElement('div'); pcard.className='card pantrycard';
+    const ph=document.createElement('h2'); ph.textContent='🏠 Heb ik in huis'; pcard.appendChild(ph);
+    const note=document.createElement('div'); note.className='badge pantry-note'; note.textContent='Deze laat ik weg van je boodschappenlijst. Tik ✕ om er weer op te zetten.'; pcard.appendChild(note);
+    pantry.slice().sort((a,b)=>a.localeCompare(b,'nl')).forEach(n=>{
+      const row=document.createElement('div'); row.className='item';
+      const lab=document.createElement('span'); lab.className='lab'; lab.textContent=n;
+      const del=document.createElement('button'); del.className='del'; del.textContent='✕'; del.title='Weer op de lijst'; del.setAttribute('aria-label','Weer op de lijst'); del.onclick=()=>{ removeFromPantry(n); renderShopWrap(key); };
+      row.append(lab,del); pcard.appendChild(row);
+    });
+    wrap.appendChild(pcard);
+  }
 }
 function hideDone(){ doneHidden=!doneHidden; renderShopWrap(curKey()); }
 function resetChecks(){
   const key=curKey(), yw=isoWeek(viewDate);
   if(confirm('Alle vinkjes voor week '+yw.week+' wissen?')){ checksAll[key]={}; saveChecks(); renderShopWrap(key); }
+}
+
+/* ---------- DELEN ---------- */
+function buildShareText(key){
+  const yw=isoWeek(viewDate);
+  const ids=plannerWeeks[key]||[], manual=manualAll[key]||[], checks=checksAll[key]||{};
+  const cats = ids.length ? buildShopping(key,ids) : {};
+  const manByCat={}, manOther=[];
+  manual.forEach(m=>{ if(m.c && CATS.some(c=>c[0]===m.c)) (manByCat[m.c]=manByCat[m.c]||[]).push(m); else manOther.push(m); });
+  const out=[]; const line=(sk,txt)=>out.push((checks[sk]?'✓ ':'• ')+txt);
+  CATS.forEach(([ckey,label])=>{
+    const recItems=cats[ckey]||[], manItems=manByCat[ckey]||[];
+    if(!recItems.length && !manItems.length) return;
+    out.push(label);
+    recItems.forEach(it=>line(it.c+'|'+it.n+'|'+it.u, shopText(it)));
+    manItems.forEach(m=>line('m|'+m.id, m.t));
+    out.push('');
+  });
+  if(manOther.length){ out.push('Zelf toegevoegd'); manOther.forEach(m=>line('m|'+m.id, m.t)); out.push(''); }
+  const body=out.join('\n').trim();
+  return body ? '🛒 Boodschappen – Week '+yw.week+' · '+yw.year+'\n\n'+body : '';
+}
+async function shareList(key){
+  const text=buildShareText(key);
+  if(!text){ alert('Je lijst is nog leeg.'); return; }
+  if(navigator.share){ try{ await navigator.share({title:'Boodschappen', text}); return; }catch(e){ if(e && e.name==='AbortError') return; } }
+  if(navigator.clipboard && navigator.clipboard.writeText){ try{ await navigator.clipboard.writeText(text); alert('Boodschappenlijst gekopieerd. Plak ’m waar je wilt.'); return; }catch(e){} }
+  prompt('Kopieer je boodschappenlijst:', text);
+}
+
+/* ---------- KOPIEER VORIGE WEEK ---------- */
+function prevWeekKey(){ const yw=isoWeek(shiftWeek(viewDate,-1)); return yw.year+'-W'+yw.week; }
+function copyPrevWeek(){
+  const key=curKey(), pk=prevWeekKey(), src=plannerWeeks[pk]||[];
+  if(!src.length) return;
+  const set=new Set(plannerWeeks[key]||[]);
+  src.forEach(id=>{ if(recipeById[id] && !hiddenRecipes.includes(id)){ set.add(id); const sv=getWeekServings(pk,id); if(sv!==BASE_SERV) setWeekServings(key,id,sv); } });
+  if(set.size) plannerWeeks[key]=[...set];
+  savePlanner(); renderShopping();
 }
 
 /* ---------- RECIPES VIEW ---------- */
@@ -449,6 +537,11 @@ function renderRecipes(){
       '<h3>Ingrediënten</h3><ul class="ingList">'+r.ing.map(g=>'<li>'+ingText(scaleGroup(g,cardServ))+'</li>').join('')+'</ul>'+
       '<h3>Bereiding</h3><ol class="stepList">'+scaleSteps(r,cardServ).map(x=>'<li>'+x+'</li>').join('')+'</ol>'+
       (r.source?'<a class="src" href="'+r.source+'" target="_blank" rel="noopener noreferrer">Bekijk origineel recept ↗</a>':'');
+    const noteWrap=document.createElement('div'); noteWrap.className='note-wrap';
+    const nl=document.createElement('label'); nl.textContent='📝 Mijn notitie'; nl.htmlFor='note-'+r.id;
+    const ta=document.createElement('textarea'); ta.id='note-'+r.id; ta.placeholder='Bijv. lekker met extra knoflook…'; ta.value=recipeNotes[r.id]||'';
+    ta.oninput=()=>{ const v=ta.value; if(v.trim()) recipeNotes[r.id]=v; else delete recipeNotes[r.id]; saveNotes(); };
+    noteWrap.append(nl,ta); body.appendChild(noteWrap);
     const rm=document.createElement('button'); rm.className='rmrecipe'; rm.textContent='Verwijder recept'; rm.onclick=()=>deleteRecipe(r.id);
     body.appendChild(rm);
     const minus=body.querySelector('.minus'), plus=body.querySelector('.plus');
@@ -466,6 +559,17 @@ function renderRecipes(){
     card.append(thumb,body);
     root.appendChild(card);
   });
+}
+
+function surprise(){
+  const list=recipes.filter(r=>!hiddenRecipes.includes(r.id));
+  if(!list.length) return;
+  const r=list[Math.floor(Math.random()*list.length)];
+  mealFilter='alle'; searchQuery='';
+  const si=document.getElementById('recipeSearch');
+  if(si){ si.value=''; document.getElementById('searchClear').classList.add('hidden'); }
+  renderChips(); renderRecipes();
+  requestAnimationFrame(()=>{ const el=document.getElementById('recipe-'+r.id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); });
 }
 
 function deleteRecipe(id){

@@ -1,5 +1,5 @@
-const CACHE = 'boodschappen-v5';
-const ASSETS = ['./', './index.html', './manifest.json'];
+const CACHE = 'boodschappen-v6';
+const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 // Nieuwe versie meteen installeren
 self.addEventListener('install', e => {
