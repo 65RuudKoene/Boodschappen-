@@ -49,7 +49,9 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .pick-item:last-child{border-bottom:none}
 .pick-item input{width:22px;height:22px;accent-color:var(--accent)}
 .selchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
-.selchip{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:13px;color:var(--accent-2);font-weight:600;cursor:pointer}
+.selchip{display:inline-flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 2px 2px 4px;font-size:13px}
+.sc-open{background:transparent;color:var(--accent-2);font-weight:600;font-size:13px;padding:5px 4px 5px 6px}
+.sc-x{background:transparent;color:var(--muted);font-size:14px;padding:5px 8px;border-radius:999px}
 .additem{display:flex;gap:8px;margin:2px 0 10px}
 .additem input{flex:1;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:10px 12px;font-size:16px;min-width:0}
 .additem button{background:var(--accent);color:#fff;font-weight:600;flex:0 0 auto}
@@ -242,8 +244,9 @@ function navWeek(dir){ viewDate=shiftWeek(viewDate,dir); renderShopping(); }
 function renderSel(key){
   const el=document.getElementById('selRecipes'), ids=plannerWeeks[key]||[];
   if(!ids.length){ el.innerHTML='<div class="badge">Nog geen recepten gekozen voor deze week.</div>'; return; }
-  el.innerHTML='<div class="selchips">'+ids.map(id=>{const r=recipeById[id];return r?'<button class="selchip" data-id="'+id+'">'+r.emoji+' '+r.title+' ›</button>':'';}).join('')+'</div>';
-  el.querySelectorAll('.selchip').forEach(b=>{ b.onclick=()=>openRecipe(b.dataset.id); });
+  el.innerHTML='<div class="selchips">'+ids.map(id=>{const r=recipeById[id];return r?'<span class="selchip"><button class="sc-open" data-id="'+id+'">'+r.emoji+' '+r.title+'</button><button class="sc-x" data-id="'+id+'" aria-label="Uit de week halen">✕</button></span>':'';}).join('')+'</div>';
+  el.querySelectorAll('.sc-open').forEach(b=>{ b.onclick=()=>openRecipe(b.dataset.id); });
+  el.querySelectorAll('.sc-x').forEach(b=>{ b.onclick=()=>toggleRecipeInWeek(key,b.dataset.id,false); });
 }
 function openRecipe(id){
   mealFilter='alle'; searchQuery='';
@@ -285,7 +288,7 @@ function toggleRecipeInWeek(key,id,on){
   const set=new Set(plannerWeeks[key]||[]);
   if(on) set.add(id); else set.delete(id);
   if(set.size) plannerWeeks[key]=[...set]; else delete plannerWeeks[key];
-  savePlanner(); renderSel(key); renderShopWrap(key);
+  savePlanner(); renderSel(key); renderPickList(key); renderShopWrap(key);
 }
 function initPickSearch(){
   const si=document.getElementById('pickSearch'), sc=document.getElementById('pickSearchClear');
