@@ -82,6 +82,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 
 .serv{display:flex;align-items:center;gap:10px;margin:10px 0 2px;flex-wrap:wrap}
 .serv .lbl{font-size:14px;color:var(--muted)}
+.serv-note{display:block;margin:2px 0 4px}
 .stepper{display:inline-flex;align-items:center;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px}
 .stepper button{width:34px;height:34px;border-radius:999px;background:var(--card);color:var(--text);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .stepper button:disabled{opacity:.35;box-shadow:none}
@@ -220,20 +221,27 @@ let plannerWeeks=JSON.parse(localStorage.getItem('planner-weeks-v1')||'{}');
 let checksAll=JSON.parse(localStorage.getItem('boodschappen-checks-v3')||'{}');
 let manualAll=JSON.parse(localStorage.getItem('planner-manual-v1')||'{}');
 let hiddenRecipes=JSON.parse(localStorage.getItem('hidden-recipes-v1')||'[]');
-let recipeServings=JSON.parse(localStorage.getItem('recipe-servings-v1')||'{}');
+let weekServings=JSON.parse(localStorage.getItem('week-servings-v1')||'{}');
 let doneHidden=false, pickerOpen=false;
 let pickMeal='alle', pickQuery='';
 function savePlanner(){ localStorage.setItem('planner-weeks-v1',JSON.stringify(plannerWeeks)); }
 function saveChecks(){ localStorage.setItem('boodschappen-checks-v3',JSON.stringify(checksAll)); }
 function saveManual(){ localStorage.setItem('planner-manual-v1',JSON.stringify(manualAll)); }
 function saveHidden(){ localStorage.setItem('hidden-recipes-v1',JSON.stringify(hiddenRecipes)); }
-function saveServings(){ localStorage.setItem('recipe-servings-v1',JSON.stringify(recipeServings)); }
+function saveWeekServings(){ localStorage.setItem('week-servings-v1',JSON.stringify(weekServings)); }
 function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
-/* ---------- PERSONEN (recepten staan standaard op 2) ---------- */
+/* ---------- PERSONEN (standaard 2; per week per recept in te stellen) ---------- */
 const BASE_SERV=2, MIN_SERV=1, MAX_SERV=20;
-function getServings(id){ const v=recipeServings[id]; return (typeof v==='number' && v>=MIN_SERV && v<=MAX_SERV)?v:BASE_SERV; }
-function setServings(id,n){ n=Math.max(MIN_SERV,Math.min(MAX_SERV,Math.round(n))); if(n===BASE_SERV) delete recipeServings[id]; else recipeServings[id]=n; saveServings(); }
+function clampServ(n){ return Math.max(MIN_SERV,Math.min(MAX_SERV,Math.round(n))); }
+function getWeekServings(key,id){ const w=weekServings[key], v=w&&w[id]; return (typeof v==='number'&&v>=MIN_SERV&&v<=MAX_SERV)?v:BASE_SERV; }
+function setWeekServings(key,id,n){
+  n=clampServ(n);
+  if(n===BASE_SERV){ if(weekServings[key]) delete weekServings[key][id]; }
+  else { (weekServings[key]=weekServings[key]||{})[id]=n; }
+  if(weekServings[key] && !Object.keys(weekServings[key]).length) delete weekServings[key];
+  saveWeekServings();
+}
 function servLabel(n){ return n+(n===1?' persoon':' personen'); }
 function scaleGroup(g,s){ return {q:(g.q==null?null:g.q*s/BASE_SERV), u:g.u, n:g.n, c:g.c}; }
 /* Schaalt hoeveelheden in de bereidingstekst mee (alleen tokens met een eenheid, in één keer). */
@@ -249,10 +257,10 @@ function scaleSteps(r,s){
 }
 
 /* ---------- SHOPPING BUILD ---------- */
-function buildShopping(ids){
+function buildShopping(key,ids){
   const map={}, order=[];
   ids.forEach(id=>{ const r=recipeById[id]; if(!r || hiddenRecipes.includes(id)) return;
-    const s=getServings(id);
+    const s=getWeekServings(key,id);
     r.ing.forEach(g=>{
       const k=g.c+'|'+g.n+'|'+g.u;
       if(!map[k]){ map[k]={q:0,u:g.u,n:g.n,c:g.c,hasNum:false}; order.push(k); }
@@ -280,11 +288,11 @@ function navWeek(dir){ viewDate=shiftWeek(viewDate,dir); renderShopping(); }
 function renderSel(key){
   const el=document.getElementById('selRecipes'), ids=plannerWeeks[key]||[];
   if(!ids.length){ el.innerHTML='<div class="badge">Nog geen recepten gekozen voor deze week.</div>'; return; }
-  el.innerHTML='<div class="selchips">'+ids.map(id=>{const r=recipeById[id];if(!r)return '';const s=getServings(id);return '<span class="selchip"><button class="sc-open" data-id="'+id+'">'+r.emoji+' '+r.title+'</button><span class="mini"><button class="s-minus" data-id="'+id+'" aria-label="Minder personen">−</button><span class="n">'+s+'p</span><button class="s-plus" data-id="'+id+'" aria-label="Meer personen">+</button></span><button class="sc-x" data-id="'+id+'" aria-label="Uit de week halen">✕</button></span>';}).join('')+'</div>';
+  el.innerHTML='<div class="selchips">'+ids.map(id=>{const r=recipeById[id];if(!r)return '';const s=getWeekServings(key,id);return '<span class="selchip"><button class="sc-open" data-id="'+id+'">'+r.emoji+' '+r.title+'</button><span class="mini"><button class="s-minus" data-id="'+id+'" aria-label="Minder personen">−</button><span class="n">'+s+'p</span><button class="s-plus" data-id="'+id+'" aria-label="Meer personen">+</button></span><button class="sc-x" data-id="'+id+'" aria-label="Uit de week halen">✕</button></span>';}).join('')+'</div>';
   el.querySelectorAll('.sc-open').forEach(b=>{ b.onclick=()=>openRecipe(b.dataset.id); });
   el.querySelectorAll('.sc-x').forEach(b=>{ b.onclick=()=>toggleRecipeInWeek(key,b.dataset.id,false); });
-  const bump=(id,d)=>{ setServings(id,getServings(id)+d); renderSel(key); renderShopWrap(key); };
-  el.querySelectorAll('.s-minus').forEach(b=>{ b.disabled=getServings(b.dataset.id)<=MIN_SERV; b.onclick=()=>bump(b.dataset.id,-1); });
+  const bump=(id,d)=>{ setWeekServings(key,id,getWeekServings(key,id)+d); renderSel(key); renderShopWrap(key); };
+  el.querySelectorAll('.s-minus').forEach(b=>{ b.disabled=getWeekServings(key,b.dataset.id)<=MIN_SERV; b.onclick=()=>bump(b.dataset.id,-1); });
   el.querySelectorAll('.s-plus').forEach(b=>{ b.onclick=()=>bump(b.dataset.id,1); });
 }
 function openRecipe(id){
@@ -327,6 +335,7 @@ function toggleRecipeInWeek(key,id,on){
   const set=new Set(plannerWeeks[key]||[]);
   if(on) set.add(id); else set.delete(id);
   if(set.size) plannerWeeks[key]=[...set]; else delete plannerWeeks[key];
+  if(!on) setWeekServings(key,id,BASE_SERV);
   savePlanner(); renderSel(key); renderPickList(key); renderShopWrap(key);
 }
 function initPickSearch(){
@@ -362,7 +371,7 @@ function renderShopWrap(key){
   }
 
   if(ids.length){
-    const cats=buildShopping(ids);
+    const cats=buildShopping(key,ids);
     CATS.forEach(([ckey,label])=>{
       const items=cats[ckey]; if(!items||!items.length) return;
       const card=document.createElement('div'); card.className='card';
@@ -430,27 +439,27 @@ function renderRecipes(){
     thumb.append(ph,img);
     const body=document.createElement('div'); body.className='body';
     const mealTag=r.meal?'<span class="meal-badge">'+MEALS[r.meal]+'</span>':'';
-    const s0=getServings(r.id);
-    body.innerHTML='<h2>'+r.title+mealTag+'</h2><div class="badge">'+r.time+' · <span class="servTxt">'+servLabel(s0)+'</span></div>'+
-      '<div class="serv"><span class="lbl">Aantal personen</span><span class="stepper"><button class="minus" aria-label="Minder personen">−</button><span class="cnt">'+servLabel(s0)+'</span><button class="plus" aria-label="Meer personen">+</button></span></div>'+
-      '<h3>Ingrediënten</h3><ul class="ingList">'+r.ing.map(g=>'<li>'+ingText(scaleGroup(g,s0))+'</li>').join('')+'</ul>'+
-      '<h3>Bereiding</h3><ol class="stepList">'+scaleSteps(r,s0).map(x=>'<li>'+x+'</li>').join('')+'</ol>'+
+    let cardServ=BASE_SERV;
+    body.innerHTML='<h2>'+r.title+mealTag+'</h2><div class="badge">'+r.time+' · <span class="servTxt">'+servLabel(cardServ)+'</span></div>'+
+      '<div class="serv"><span class="lbl">Aantal personen</span><span class="stepper"><button class="minus" aria-label="Minder personen">−</button><span class="cnt">'+servLabel(cardServ)+'</span><button class="plus" aria-label="Meer personen">+</button></span></div>'+
+      '<div class="badge serv-note">Alleen om te bekijken. Voor de boodschappenlijst stel je het aantal personen per week in.</div>'+
+      '<h3>Ingrediënten</h3><ul class="ingList">'+r.ing.map(g=>'<li>'+ingText(scaleGroup(g,cardServ))+'</li>').join('')+'</ul>'+
+      '<h3>Bereiding</h3><ol class="stepList">'+scaleSteps(r,cardServ).map(x=>'<li>'+x+'</li>').join('')+'</ol>'+
       (r.source?'<a class="src" href="'+r.source+'" target="_blank" rel="noopener noreferrer">Bekijk origineel recept ↗</a>':'');
     const rm=document.createElement('button'); rm.className='rmrecipe'; rm.textContent='Verwijder recept'; rm.onclick=()=>deleteRecipe(r.id);
     body.appendChild(rm);
     const minus=body.querySelector('.minus'), plus=body.querySelector('.plus');
     const applyServ=(ns)=>{
-      setServings(r.id,ns);
-      const s=getServings(r.id);
-      body.querySelector('.cnt').textContent=servLabel(s);
-      body.querySelector('.servTxt').textContent=servLabel(s);
-      body.querySelector('.ingList').innerHTML=r.ing.map(g=>'<li>'+ingText(scaleGroup(g,s))+'</li>').join('');
-      body.querySelector('.stepList').innerHTML=scaleSteps(r,s).map(x=>'<li>'+x+'</li>').join('');
-      minus.disabled=s<=MIN_SERV;
+      cardServ=clampServ(ns);
+      body.querySelector('.cnt').textContent=servLabel(cardServ);
+      body.querySelector('.servTxt').textContent=servLabel(cardServ);
+      body.querySelector('.ingList').innerHTML=r.ing.map(g=>'<li>'+ingText(scaleGroup(g,cardServ))+'</li>').join('');
+      body.querySelector('.stepList').innerHTML=scaleSteps(r,cardServ).map(x=>'<li>'+x+'</li>').join('');
+      minus.disabled=cardServ<=MIN_SERV;
     };
-    minus.disabled=s0<=MIN_SERV;
-    minus.onclick=()=>applyServ(getServings(r.id)-1);
-    plus.onclick=()=>applyServ(getServings(r.id)+1);
+    minus.disabled=cardServ<=MIN_SERV;
+    minus.onclick=()=>applyServ(cardServ-1);
+    plus.onclick=()=>applyServ(cardServ+1);
     card.append(thumb,body);
     root.appendChild(card);
   });
@@ -474,7 +483,7 @@ function setHeader(view){
   const t=document.getElementById('pageTitle'), s=document.getElementById('subtitle'), b=document.getElementById('backBtn');
   if(view==='home'){ t.textContent='Boodschappen & Recepten'; s.textContent='Kies waar je heen wilt.'; b.classList.add('hidden'); }
   if(view==='shop'){ t.textContent='Boodschappen'; s.textContent='Kies je recepten voor de week; de lijst wordt automatisch samengesteld.'; b.classList.remove('hidden'); }
-  if(view==='recipes'){ t.textContent='Recepten'; s.textContent='Kies per recept het aantal personen.'; b.classList.remove('hidden'); }
+  if(view==='recipes'){ t.textContent='Recepten'; s.textContent='Al je recepten. Aantal personen kies je per week bij de boodschappen.'; b.classList.remove('hidden'); }
 }
 function show(id){ ['homeView','shoppingView','recipesView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id)); }
 function goHome(){ show('homeView'); setHeader('home'); refreshHome(); window.scrollTo(0,0); }
