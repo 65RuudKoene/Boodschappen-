@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self';">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff">
@@ -106,6 +106,12 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .note-wrap{margin:12px 0 2px}
 .note-wrap label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
 .note-wrap textarea{width:100%;min-height:44px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:9px 11px;font-size:15px;font-family:inherit;resize:vertical}
+.synclink{display:block;margin:14px auto 0;background:transparent;color:var(--muted);font-size:14px;font-weight:600;padding:8px 12px}
+.synced-field{margin:10px 0}
+.synced-field label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.synced-field input{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px}
+#syncView .actionbtn{margin-top:6px}
+.syncbadge{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--accent);border-radius:8px;padding:2px 7px;margin-left:8px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -131,6 +137,20 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <span class="t-wrap"><span class="t-main">Boodschappen</span><span class="t-sub" id="homeShopSub"></span></span>
     <span class="chev">›</span>
   </button>
+  <button class="synclink" id="syncLink" onclick="showSync()">⚙️ Samen delen</button>
+</section>
+
+<section id="syncView" class="hidden">
+  <div class="card">
+    <h2>Samen delen</h2>
+    <div class="badge serv-note">Vul dit op beide telefoons hétzelfde in. Dan delen jullie live dezelfde boodschappenlijst, weekplanning en voorraad. Laat het leeg om alles alleen op dit toestel te houden.</div>
+    <div class="synced-field"><label for="syncUrl">Supabase Project URL</label><input id="syncUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="https://xxxx.supabase.co"></div>
+    <div class="synced-field"><label for="syncKey">Anon key</label><input id="syncKey" type="text" autocomplete="off" autocapitalize="off" placeholder="eyJhbGci…"></div>
+    <div class="synced-field"><label for="syncHome">Gedeelde code (zelf kiezen, niet te raden)</label><input id="syncHome" type="text" autocomplete="off" autocapitalize="off" placeholder="bijv. ruud-claudia-7492"></div>
+    <button id="syncConnectBtn" class="actionbtn">Verbinden</button>
+    <button id="syncDisconnectBtn" class="linkbtn hidden">Verbinding verbreken</button>
+    <div id="syncStatus" class="badge serv-note" style="margin-top:12px"></div>
+  </div>
 </section>
 
 <section id="shoppingView" class="hidden">
@@ -167,6 +187,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 
 </main>
 
+<script src="js/supabase.js"></script>
 <script>
 /* ---------- DATA ----------
    Ingrediënt = {q: hoeveelheid of null, u: eenheid, n: naam, c: categorie}
@@ -254,13 +275,14 @@ let pantry=JSON.parse(localStorage.getItem('pantry-v1')||'[]');
 let recipeNotes=JSON.parse(localStorage.getItem('recipe-notes-v1')||'{}');
 let doneHidden=false, pickerOpen=false;
 let pickMeal='alle', pickQuery='';
-function savePlanner(){ localStorage.setItem('planner-weeks-v1',JSON.stringify(plannerWeeks)); }
-function saveChecks(){ localStorage.setItem('boodschappen-checks-v3',JSON.stringify(checksAll)); }
-function saveManual(){ localStorage.setItem('planner-manual-v1',JSON.stringify(manualAll)); }
-function saveHidden(){ localStorage.setItem('hidden-recipes-v1',JSON.stringify(hiddenRecipes)); }
-function saveWeekServings(){ localStorage.setItem('week-servings-v1',JSON.stringify(weekServings)); }
-function savePantry(){ localStorage.setItem('pantry-v1',JSON.stringify(pantry)); }
-function saveNotes(){ localStorage.setItem('recipe-notes-v1',JSON.stringify(recipeNotes)); }
+function persist(k,val){ localStorage.setItem(k,JSON.stringify(val)); syncPush(k,val); }
+function savePlanner(){ persist('planner-weeks-v1',plannerWeeks); }
+function saveChecks(){ persist('boodschappen-checks-v3',checksAll); }
+function saveManual(){ persist('planner-manual-v1',manualAll); }
+function saveHidden(){ persist('hidden-recipes-v1',hiddenRecipes); }
+function saveWeekServings(){ persist('week-servings-v1',weekServings); }
+function savePantry(){ persist('pantry-v1',pantry); }
+function saveNotes(){ persist('recipe-notes-v1',recipeNotes); }
 function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 /* ---------- VOORRAADKAST (heb ik altijd/al in huis) ---------- */
@@ -601,13 +623,69 @@ function setHeader(view){
   if(view==='home'){ t.textContent='Boodschappen & Recepten'; s.textContent='Kies waar je heen wilt.'; b.classList.add('hidden'); }
   if(view==='shop'){ t.textContent='Boodschappen'; s.textContent='Kies je recepten voor de week; de lijst wordt automatisch samengesteld.'; b.classList.remove('hidden'); }
   if(view==='recipes'){ t.textContent='Recepten'; s.textContent='Al je recepten. Aantal personen kies je per week bij de boodschappen.'; b.classList.remove('hidden'); }
+  if(view==='sync'){ t.textContent='Samen delen'; s.textContent='Deel je lijst live met een ander toestel.'; b.classList.remove('hidden'); }
 }
-function show(id){ ['homeView','shoppingView','recipesView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id)); }
+function show(id){ ['homeView','shoppingView','recipesView','syncView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id)); }
 function goHome(){ show('homeView'); setHeader('home'); refreshHome(); window.scrollTo(0,0); }
 function showTab(tab){
   if(tab==='shop'){ show('shoppingView'); setHeader('shop'); renderShopping(); }
   else { show('recipesView'); setHeader('recipes'); }
   window.scrollTo(0,0);
+}
+function showSync(){ show('syncView'); setHeader('sync'); renderSyncForm(); window.scrollTo(0,0); }
+
+/* ---------- GEDEELD (live sync via Supabase) ---------- */
+const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1'];
+let sb=null, syncCfg=null, syncApplying=false;
+function getSyncCfg(){ try{ return JSON.parse(localStorage.getItem('sync-config-v1')||'null'); }catch(e){ return null; } }
+function isEmptyVal(v){ if(v==null) return true; if(Array.isArray(v)) return v.length===0; if(typeof v==='object') return Object.keys(v).length===0; return false; }
+function localVal(k){ try{ const s=localStorage.getItem(k); return s==null?undefined:JSON.parse(s); }catch(e){ return undefined; } }
+function applyIncoming(k,v){
+  syncApplying=true;
+  if(k==='planner-weeks-v1') plannerWeeks=v||{};
+  else if(k==='boodschappen-checks-v3') checksAll=v||{};
+  else if(k==='planner-manual-v1') manualAll=v||{};
+  else if(k==='hidden-recipes-v1') hiddenRecipes=v||[];
+  else if(k==='week-servings-v1') weekServings=v||{};
+  else if(k==='pantry-v1') pantry=v||[];
+  else if(k==='recipe-notes-v1') recipeNotes=v||{};
+  localStorage.setItem(k,JSON.stringify(v));
+  syncApplying=false;
+}
+function syncPush(k,val){
+  if(!sb||!syncCfg||syncApplying) return;
+  sb.from('app_kv').upsert({household:syncCfg.household,k,v:val,updated_at:new Date().toISOString()}).then(function(res){ if(res&&res.error) console.warn('sync push',k,res.error.message); });
+}
+function rerender(){
+  refreshHome();
+  if(!document.getElementById('shoppingView').classList.contains('hidden')) renderShopping();
+  if(!document.getElementById('recipesView').classList.contains('hidden')){ renderChips(); renderRecipes(); }
+}
+async function syncConnect(cfg){
+  if(!(window.supabase&&window.supabase.createClient)) throw new Error('Supabase-bibliotheek niet geladen');
+  sb=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:false}});
+  syncCfg=cfg;
+  const res=await sb.from('app_kv').select('k,v').eq('household',cfg.household);
+  if(res.error) throw res.error;
+  const remote=new Set();
+  (res.data||[]).forEach(function(row){ remote.add(row.k); applyIncoming(row.k,row.v); });
+  SYNC_KEYS.forEach(function(k){ if(!remote.has(k)){ const v=localVal(k); if(!isEmptyVal(v)) sb.from('app_kv').upsert({household:cfg.household,k:k,v:v,updated_at:new Date().toISOString()}); } });
+  sb.channel('kv-'+cfg.household)
+    .on('postgres_changes',{event:'*',schema:'public',table:'app_kv',filter:'household=eq.'+cfg.household},function(payload){
+      const row=payload.new; if(row&&row.k&&SYNC_KEYS.indexOf(row.k)>=0){ applyIncoming(row.k,row.v); rerender(); }
+    })
+    .subscribe();
+  rerender();
+}
+function syncDisconnect(){ try{ if(sb) sb.removeAllChannels(); }catch(e){} sb=null; syncCfg=null; localStorage.removeItem('sync-config-v1'); }
+function renderSyncForm(){
+  const cfg=getSyncCfg()||{};
+  document.getElementById('syncUrl').value=cfg.url||'';
+  document.getElementById('syncKey').value=cfg.key||'';
+  document.getElementById('syncHome').value=cfg.household||'';
+  const st=document.getElementById('syncStatus'), dc=document.getElementById('syncDisconnectBtn');
+  if(sb&&syncCfg){ st.textContent='✅ Verbonden — je deelt live met code “'+syncCfg.household+'”.'; dc.classList.remove('hidden'); }
+  else { st.textContent='Nog niet verbonden. Deze telefoon houdt alles alleen lokaal.'; dc.classList.add('hidden'); }
 }
 
 /* ---------- INIT ---------- */
@@ -615,7 +693,23 @@ function refreshHome(){
   const ck=now.year+'-W'+now.week, n=(plannerWeeks[ck]||[]).length;
   document.getElementById('homeShopSub').textContent='Week '+now.week+' · '+now.year+(n?' · '+n+' recept'+(n>1?'en':''):'');
   document.getElementById('homeRecipeSub').textContent=recipes.filter(r=>!hiddenRecipes.includes(r.id)).length+' recepten';
+  const sl=document.getElementById('syncLink'); if(sl) sl.textContent=(sb&&syncCfg)?'🔗 Gedeeld — samen delen':'⚙️ Samen delen';
 }
+document.getElementById('syncConnectBtn').onclick=async function(){
+  const url=document.getElementById('syncUrl').value.trim().replace(/\/+$/,'');
+  const key=document.getElementById('syncKey').value.trim();
+  const household=document.getElementById('syncHome').value.trim();
+  const st=document.getElementById('syncStatus');
+  if(!url||!key||!household){ st.textContent='Vul alle drie de velden in.'; return; }
+  st.textContent='Verbinden…';
+  try{
+    await syncConnect({url:url,key:key,household:household});
+    localStorage.setItem('sync-config-v1',JSON.stringify({url:url,key:key,household:household}));
+    renderSyncForm();
+    st.textContent='✅ Gelukt! Vul op de andere telefoon exact dezelfde gegevens in.';
+  }catch(e){ st.textContent='Verbinden mislukt: '+(e&&e.message?e.message:e)+'. Controleer de URL, de anon key en of je de SQL hebt uitgevoerd.'; }
+};
+document.getElementById('syncDisconnectBtn').onclick=function(){ syncDisconnect(); renderSyncForm(); rerender(); };
 const searchInput=document.getElementById('recipeSearch'), searchClear=document.getElementById('searchClear');
 searchInput.oninput=()=>{ searchQuery=searchInput.value.trim(); searchClear.classList.toggle('hidden',searchQuery===''); renderRecipes(); };
 searchClear.onclick=()=>{ searchInput.value=''; searchQuery=''; searchClear.classList.add('hidden'); renderRecipes(); searchInput.focus(); };
@@ -624,6 +718,8 @@ renderChips();
 renderRecipes();
 initPickSearch();
 goHome();
+
+(function(){ const cfg=getSyncCfg(); if(cfg&&cfg.url&&cfg.key&&cfg.household){ syncConnect(cfg).catch(function(e){ console.warn('sync init',e&&e.message?e.message:e); }); } })();
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
