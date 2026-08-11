@@ -158,6 +158,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <span class="chev">›</span>
   </button>
   <button class="synclink" id="syncLink" onclick="showSync()">⚙️ Samen delen</button>
+  <div id="homeVer" class="badge" style="text-align:center;margin-top:6px;opacity:.55"></div>
 </section>
 
 <section id="syncView" class="hidden">
@@ -669,7 +670,7 @@ function showTab(tab){
 function showSync(){ show('syncView'); setHeader('sync'); renderSyncInfo(); window.scrollTo(0,0); }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='10';
+const APP_VERSION='11';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1'];
@@ -771,6 +772,7 @@ searchInput.oninput=()=>{ searchQuery=searchInput.value.trim(); searchClear.clas
 searchClear.onclick=()=>{ searchInput.value=''; searchQuery=''; searchClear.classList.add('hidden'); renderRecipes(); searchInput.focus(); };
 
 document.getElementById('appVer').textContent='versie '+APP_VERSION;
+document.getElementById('homeVer').textContent='versie '+APP_VERSION;
 renderChips();
 renderRecipes();
 initPickSearch();

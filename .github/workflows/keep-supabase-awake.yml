@@ -1,0 +1,29 @@
+name: Keep Supabase awake
+
+# Gratis Supabase-projecten pauzeren na ~7 dagen zonder activiteit.
+# Deze workflow tikt de database elke 3 dagen even aan zodat 'ie wakker blijft.
+# (De publishable key is browser-veilig en staat al openbaar in de app.)
+
+on:
+  schedule:
+    - cron: '17 6 */3 * *'   # elke 3 dagen om 06:17 UTC
+  workflow_dispatch:          # met de hand starten kan ook
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST
+        env:
+          SUPABASE_URL: https://uutvmhoplasohgucxopa.supabase.co
+          SUPABASE_KEY: sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j
+        run: |
+          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/app_kv?select=k&limit=1" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+          echo "Supabase antwoordde met HTTP $code"
+          # 2xx of 4xx betekent dat het project reageert (dus wakker); alleen bij geen antwoord falen
+          if [ -z "$code" ] || [ "$code" = "000" ]; then
+            echo "Geen antwoord van Supabase"; exit 1
+          fi
