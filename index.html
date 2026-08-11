@@ -111,6 +111,12 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .synced-field label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
 .synced-field input{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px}
 #syncView .actionbtn{margin-top:6px}
+#addModeChips{margin:10px 2px 4px}
+.photo-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px}
+.photo-thumbs .th{position:relative;width:74px;height:74px;border-radius:12px;overflow:hidden;background:var(--bg);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.photo-thumbs .th img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-thumbs .th button{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:999px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center}
+.photo-add{width:74px;height:74px;border-radius:12px;border:1px dashed var(--line);background:transparent;color:var(--muted);font-size:24px;display:flex;align-items:center;justify-content:center}
 .syncbadge{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--accent);border-radius:8px;padding:2px 7px;margin-left:8px;vertical-align:middle}
 .login-gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
 .login-card{background:var(--card);border-radius:20px;padding:28px 22px calc(28px + env(safe-area-inset-bottom));box-shadow:0 1px 3px rgba(0,0,0,.06);width:100%;max-width:360px;text-align:center}
@@ -199,7 +205,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <button class="clr hidden" id="searchClear" aria-label="Wissen">✕</button>
   </div>
   <div class="chips" id="mealFilter"></div>
-  <button class="surprise" onclick="showAdd()">➕ Recept toevoegen via link</button>
+  <button class="surprise" onclick="showAdd()">➕ Recept toevoegen (AI)</button>
   <button class="surprise" onclick="surprise()">🎲 Wat eten we vandaag?</button>
   <div id="recipes"></div>
 </section>
@@ -207,8 +213,19 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 <section id="addView" class="hidden">
   <div class="card">
     <h2>Recept toevoegen</h2>
-    <div class="badge serv-note">Plak een link naar een recept. De AI leest het uit en zet het klaar voor 2 personen. Daarna kun je het nog controleren voor je het toevoegt.</div>
-    <div class="synced-field"><label for="addUrl">Link naar recept</label><input id="addUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="https://…"></div>
+    <div class="badge serv-note">Via een link of een foto van een receptenboek/blaadje. De AI leest het uit en zet het klaar voor 2 personen. Daarna kun je het nog controleren voor je het toevoegt.</div>
+    <div class="chips" id="addModeChips">
+      <button class="chip active" data-mode="url" type="button">🔗 Link</button>
+      <button class="chip" data-mode="photo" type="button">📷 Foto</button>
+    </div>
+    <div id="addUrlMode">
+      <div class="synced-field"><label for="addUrl">Link naar recept</label><input id="addUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="https://…"></div>
+    </div>
+    <div id="addPhotoMode" class="hidden">
+      <label style="display:block;font-size:13px;color:var(--muted);margin:10px 0 6px">Foto('s) van het recept (max 4, bijv. voor- en achterkant)</label>
+      <input id="addPhotoInput" type="file" accept="image/*" capture="environment" multiple class="hidden">
+      <div id="addPhotoThumbs" class="photo-thumbs"></div>
+    </div>
     <button id="addFetchBtn" class="actionbtn">Ophalen met AI</button>
     <div id="addStatus" class="badge serv-note" style="margin-top:10px"></div>
     <div id="addPreview"></div>
@@ -677,7 +694,7 @@ function setHeader(view){
   if(view==='shop'){ t.textContent='Boodschappen'; s.textContent='Kies je recepten voor de week; de lijst wordt automatisch samengesteld.'; b.classList.remove('hidden'); }
   if(view==='recipes'){ t.textContent='Recepten'; s.textContent='Al je recepten. Aantal personen kies je per week bij de boodschappen.'; b.classList.remove('hidden'); }
   if(view==='sync'){ t.textContent='Samen delen'; s.textContent='Deel je lijst live met een ander toestel.'; b.classList.remove('hidden'); }
-  if(view==='add'){ t.textContent='Recept toevoegen'; s.textContent='Plak een link, de AI doet de rest.'; b.classList.remove('hidden'); }
+  if(view==='add'){ t.textContent='Recept toevoegen'; s.textContent='Link of foto — de AI doet de rest.'; b.classList.remove('hidden'); }
 }
 function show(id){ ['homeView','shoppingView','recipesView','syncView','addView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id)); }
 function goHome(){ show('homeView'); setHeader('home'); refreshHome(); window.scrollTo(0,0); }
@@ -687,25 +704,94 @@ function showTab(tab){
   window.scrollTo(0,0);
 }
 function showSync(){ show('syncView'); setHeader('sync'); renderSyncInfo(); window.scrollTo(0,0); }
-function showAdd(){ show('addView'); setHeader('add'); document.getElementById('addStatus').textContent=''; document.getElementById('addPreview').innerHTML=''; window.scrollTo(0,0); }
+function showAdd(){
+  show('addView'); setHeader('add');
+  document.getElementById('addStatus').textContent='';
+  document.getElementById('addPreview').innerHTML='';
+  window.scrollTo(0,0);
+}
 
-/* ---------- RECEPT TOEVOEGEN VIA AI ---------- */
-let previewRecipe=null;
+/* ---------- RECEPT TOEVOEGEN VIA AI (link of foto) ---------- */
+let previewRecipe=null, addMode='url', addPhotos=[];
+const MAX_ADD_PHOTOS=4;
 function slugify(t){ return (t||'recept').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||'recept'; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 function validRecipe(r){ return r && typeof r.title==='string' && Array.isArray(r.ing) && Array.isArray(r.steps) && r.ing.length && r.steps.length; }
-async function fetchRecipeFromUrl(){
-  const url=document.getElementById('addUrl').value.trim();
+function setAddMode(mode){
+  addMode=mode;
+  document.querySelectorAll('#addModeChips .chip').forEach(function(b){ b.classList.toggle('active',b.dataset.mode===mode); });
+  document.getElementById('addUrlMode').classList.toggle('hidden',mode!=='url');
+  document.getElementById('addPhotoMode').classList.toggle('hidden',mode!=='photo');
+  document.getElementById('addStatus').textContent='';
+}
+/* Comprimeert een foto client-side (max 1400px, JPEG) zodat het uploaden licht blijft. */
+function compressImage(file){
+  return new Promise(function(resolve,reject){
+    const reader=new FileReader();
+    reader.onload=function(){
+      const img=new Image();
+      img.onload=function(){
+        const maxDim=1400; let w=img.width,h=img.height;
+        if(w>maxDim||h>maxDim){ const sc=maxDim/Math.max(w,h); w=Math.round(w*sc); h=Math.round(h*sc); }
+        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.75);
+        resolve({dataUrl:dataUrl, base64:dataUrl.split(',')[1], mediaType:'image/jpeg'});
+      };
+      img.onerror=function(){ reject(new Error('kon foto niet lezen')); };
+      img.src=reader.result;
+    };
+    reader.onerror=function(){ reject(new Error('kon bestand niet lezen')); };
+    reader.readAsDataURL(file);
+  });
+}
+function renderPhotoThumbs(){
+  const wrap=document.getElementById('addPhotoThumbs'); wrap.innerHTML='';
+  addPhotos.forEach(function(ph,i){
+    const th=document.createElement('div'); th.className='th';
+    const img=document.createElement('img'); img.src=ph.dataUrl; img.alt='Foto '+(i+1);
+    const del=document.createElement('button'); del.textContent='✕'; del.setAttribute('aria-label','Verwijderen');
+    del.onclick=function(){ addPhotos.splice(i,1); renderPhotoThumbs(); };
+    th.append(img,del); wrap.appendChild(th);
+  });
+  if(addPhotos.length<MAX_ADD_PHOTOS){
+    const add=document.createElement('button'); add.className='photo-add'; add.type='button'; add.textContent='+'; add.setAttribute('aria-label','Foto toevoegen');
+    add.onclick=function(){ document.getElementById('addPhotoInput').click(); };
+    wrap.appendChild(add);
+  }
+}
+async function handlePhotoInput(e){
+  const files=Array.prototype.slice.call(e.target.files||[]);
+  e.target.value='';
+  if(!files.length) return;
+  const st=document.getElementById('addStatus');
+  for(const f of files){
+    if(addPhotos.length>=MAX_ADD_PHOTOS) break;
+    try{ addPhotos.push(await compressImage(f)); }
+    catch(err){ st.textContent='Foto laden mislukt: '+(err&&err.message?err.message:err); }
+  }
+  renderPhotoThumbs();
+}
+async function fetchRecipe(){
   const st=document.getElementById('addStatus'), pv=document.getElementById('addPreview');
   pv.innerHTML=''; previewRecipe=null;
-  if(!/^https?:\/\//i.test(url)){ st.textContent='Plak een geldige link (begint met https://).'; return; }
   if(!sb){ st.textContent='Je moet ingelogd zijn om de AI te gebruiken.'; return; }
-  st.textContent='Bezig met ophalen en uitlezen… (kan ~10 seconden duren)';
+  const body={ household:(syncCfg&&syncCfg.household)||'' };
+  if(addMode==='url'){
+    const url=document.getElementById('addUrl').value.trim();
+    if(!/^https?:\/\//i.test(url)){ st.textContent='Plak een geldige link (begint met https://).'; return; }
+    body.url=url;
+    st.textContent='Bezig met ophalen en uitlezen\u2026 (kan ~10 seconden duren)';
+  } else {
+    if(!addPhotos.length){ st.textContent='Voeg minstens 1 foto toe.'; return; }
+    body.images=addPhotos.map(function(p){ return {data:p.base64, mediaType:p.mediaType}; });
+    st.textContent='Bezig met uitlezen van de foto\u2019s\u2026 (kan ~15 seconden duren)';
+  }
   try{
-    const res=await sb.functions.invoke('parse-recipe',{ body:{ url:url, household:(syncCfg&&syncCfg.household)||'' } });
+    const res=await sb.functions.invoke('parse-recipe',{ body:body });
     if(res.error) throw new Error(res.error.message||'onbekende fout');
     const r=res.data && res.data.recipe ? res.data.recipe : res.data;
-    if(!validRecipe(r)){ throw new Error('geen recept gevonden op deze pagina'); }
+    if(!validRecipe(r)){ throw new Error('geen recept herkend'); }
     previewRecipe=r;
     renderPreview(r);
     st.textContent='Gevonden! Controleer hieronder en voeg toe.';
@@ -736,6 +822,8 @@ function confirmAddRecipe(){
   if(r.source) rec.source=r.source;
   customRecipes.push(rec); saveCustom(); rebuildIndex();
   previewRecipe=null;
+  addPhotos=[]; renderPhotoThumbs();
+  const au=document.getElementById('addUrl'); if(au) au.value='';
   mealFilter='alle'; searchQuery='';
   renderChips(); renderRecipes(); refreshHome();
   show('recipesView'); setHeader('recipes');
@@ -743,7 +831,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='12';
+const APP_VERSION='13';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1'];
@@ -829,7 +917,10 @@ function refreshHome(){
   document.getElementById('homeRecipeSub').textContent=allRecipes().filter(r=>!hiddenRecipes.includes(r.id)).length+' recepten';
   const sl=document.getElementById('syncLink'); if(sl) sl.textContent=(sb&&syncCfg)?'🔗 Gedeeld — samen delen':'⚙️ Samen delen';
 }
-document.getElementById('addFetchBtn').onclick=fetchRecipeFromUrl;
+document.getElementById('addFetchBtn').onclick=fetchRecipe;
+document.getElementById('addPhotoInput').onchange=handlePhotoInput;
+document.querySelectorAll('#addModeChips .chip').forEach(function(b){ b.onclick=function(){ setAddMode(b.dataset.mode); }; });
+renderPhotoThumbs();
 document.getElementById('loginBtn').onclick=function(){ doLogin(document.getElementById('loginPass').value); };
 document.getElementById('loginPass').addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(document.getElementById('loginPass').value); });
 document.getElementById('logoutBtn').onclick=function(){ if(confirm('Uitloggen op dit toestel? Je gedeelde lijst blijft bestaan en komt terug zodra je opnieuw inlogt met hetzelfde wachtwoord.')) doLogout(); };

@@ -1,6 +1,8 @@
 # Edge Function: parse-recipe
 
-Zet een recept-URL om naar het app-format met de Claude API.
+Zet een recept om naar het app-format met de Claude API — via een **link** (leest de
+pagina) of via **1-4 foto's** (leest de afbeelding, bijv. een pagina uit een kookboek
+of een uitgeprint recept, met "vision").
 
 ## Eenmalig instellen (via het Supabase-dashboard)
 
@@ -18,12 +20,15 @@ Zet een recept-URL om naar het app-format met de Claude API.
    - **Zet "Verify JWT" UIT** (de functie doet zelf een lichte toegangscheck).
    - **Deploy**.
 
-Klaar. In de app: **Recepten → ➕ Recept toevoegen via link** → link plakken → **Ophalen met AI**.
+Klaar. In de app: **Recepten → ➕ Recept toevoegen (AI)** → kies **Link** of **Foto** →
+**Ophalen met AI**.
 
 ## Model wijzigen (optioneel)
-In `index.ts` staat `model: "claude-haiku-4-5-20251001"` (snel en goedkoop).
-Wil je nóg iets betere kwaliteit, gebruik dan een Sonnet-model.
+In `index.ts` staat `model: "claude-haiku-4-5-20251001"` (snel, goedkoop, en
+ondersteunt ook foto's/vision). Wil je nóg iets betere kwaliteit, gebruik dan een
+Sonnet-model.
 
 ## Kosten
-Je betaalt per uitgelezen recept een paar cent via je eigen Anthropic-tegoed.
-De gratis Supabase-laag is ruim voldoende voor dit gebruik.
+Je betaalt per uitgelezen recept een paar cent via je eigen Anthropic-tegoed
+(foto's iets meer dan een link, door de extra beeld-tokens). De gratis
+Supabase-laag is ruim voldoende voor dit gebruik.
