@@ -132,6 +132,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <input id="loginPass" type="password" inputmode="text" autocomplete="current-password" placeholder="Wachtwoord">
     <button id="loginBtn" class="actionbtn">Inloggen</button>
     <div id="loginMsg" class="badge"></div>
+    <div id="appVer" class="badge" style="margin-top:14px;opacity:.6"></div>
   </div>
 </div>
 
@@ -668,6 +669,7 @@ function showTab(tab){
 function showSync(){ show('syncView'); setHeader('sync'); renderSyncInfo(); window.scrollTo(0,0); }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
+const APP_VERSION='10';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1'];
@@ -719,8 +721,8 @@ async function syncConnect(cfg){
 }
 function renderSyncInfo(){
   const el=document.getElementById('syncInfo');
-  if(sb&&syncCfg) el.textContent='✅ Ingelogd en live gedeeld. Iedereen die op zijn toestel hetzelfde wachtwoord invult, deelt deze lijst.';
-  else el.textContent='Bezig met verbinden…';
+  if(sb&&syncCfg) el.textContent='✅ Ingelogd en live gedeeld (versie '+APP_VERSION+'). Iedereen die op zijn toestel hetzelfde wachtwoord invult, deelt deze lijst.';
+  else el.textContent='Bezig met verbinden… (versie '+APP_VERSION+')';
 }
 function showLogin(){ document.getElementById('loginMsg').textContent=''; document.getElementById('loginPass').value=''; document.getElementById('loginGate').classList.remove('hidden'); }
 function hideLogin(){ document.getElementById('loginGate').classList.add('hidden'); }
@@ -768,6 +770,7 @@ const searchInput=document.getElementById('recipeSearch'), searchClear=document.
 searchInput.oninput=()=>{ searchQuery=searchInput.value.trim(); searchClear.classList.toggle('hidden',searchQuery===''); renderRecipes(); };
 searchClear.onclick=()=>{ searchInput.value=''; searchQuery=''; searchClear.classList.add('hidden'); renderRecipes(); searchInput.focus(); };
 
+document.getElementById('appVer').textContent='versie '+APP_VERSION;
 renderChips();
 renderRecipes();
 initPickSearch();
