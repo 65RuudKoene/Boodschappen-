@@ -824,14 +824,16 @@ function confirmAddRecipe(){
   previewRecipe=null;
   addPhotos=[]; renderPhotoThumbs();
   const au=document.getElementById('addUrl'); if(au) au.value='';
+  document.getElementById('addStatus').textContent='';
+  document.getElementById('addPreview').innerHTML='';
   mealFilter='alle'; searchQuery='';
   renderChips(); renderRecipes(); refreshHome();
   show('recipesView'); setHeader('recipes');
-  requestAnimationFrame(function(){ const el=document.getElementById('recipe-'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); });
+  window.scrollTo(0,0);
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='13';
+const APP_VERSION='14';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1'];
