@@ -205,6 +205,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <button class="clr hidden" id="searchClear" aria-label="Wissen">✕</button>
   </div>
   <div class="chips" id="mealFilter"></div>
+  <div class="chips hidden" id="dinnerTypeFilter"></div>
   <button class="surprise" onclick="showAdd()">➕ Recept toevoegen (AI)</button>
   <button class="surprise" onclick="surprise()">🎲 Wat eten we vandaag?</button>
   <div id="recipes"></div>
@@ -242,17 +243,17 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
    De app telt gelijke ingrediënten (zelfde naam + eenheid) automatisch op. */
 
 const SEED_RECIPES = [
-  { id:"rode-curry", meal:"diner", emoji:"🍛", source:"https://www.pro-activ.com/nl-be/recept/rode-curry-met-kip-en-groenten-194181",
+  { id:"rode-curry", meal:"diner", type:"kip", emoji:"🍛", source:"https://www.pro-activ.com/nl-be/recept/rode-curry-met-kip-en-groenten-194181",
     title:"Rode curry met kip en groenten", time:"ca. 20 min",
     ing:[{q:250,u:"g",n:"kipfilet",c:"vlees"},{q:1,u:"",n:"rode ui",c:"groente"},{q:1,u:"",n:"rode paprika",c:"groente"},{q:100,u:"g",n:"wortel",c:"groente"},{q:0.5,u:"blik",n:"kokosmelk",c:"pot"},{q:1,u:"el",n:"rode currypasta",c:"pot"},{q:null,u:"",n:"verse koriander",c:"groente"},{q:1,u:"el",n:"vloeibare bakmargarine",c:"zuivel"},{q:20,u:"g",n:"ProActiv",c:"zuivel"},{q:1,u:"",n:"bouillonblokje",c:"voorraad"},{q:150,u:"g",n:"rijst",c:"pasta"}],
     steps:["Snijd de kip in reepjes en snijd ook de ui, paprika en wortel in stukjes.","Verhit de vloeibare margarine in een grote pan en roerbak de ui glazig. Voeg wortel en paprika toe en bak ze ongeveer 5 minuten op middelhoog vuur.","Schep de groenten uit de pan. Bak de kip in circa 5 minuten rondom bruin en doe de groenten er weer bij.","Voeg de kokosmelk, 50 ml water, de currypasta en het bouillonblokje toe en laat 5 minuten koken.","Haal de pan van het vuur, roer de ProActiv erdoor en serveer met rijst. Strooi verse koriander over elk bord."] },
 
-  { id:"turkse-traybake", meal:"diner", emoji:"🍗", source:"https://www.culy.nl/recepten/turkse-traybake-met-kip/",
+  { id:"turkse-traybake", meal:"diner", type:"kip", emoji:"🍗", source:"https://www.culy.nl/recepten/turkse-traybake-met-kip/",
     title:"Turkse traybake met kip en rijst", time:"ca. 75 min",
     ing:[{q:250,u:"g",n:"kippendijen",c:"vlees"},{q:100,u:"g",n:"rijst",c:"pasta"},{q:2,u:"",n:"ui",c:"groente"},{q:2,u:"teen",n:"knoflook",c:"groente"},{q:2,u:"",n:"puntpaprika",c:"groente"},{q:80,u:"g",n:"tomaten",c:"groente"},{q:200,u:"ml",n:"kippenbouillon",c:"pot"},{q:0.5,u:"",n:"citroen",c:"groente"},{q:1,u:"",n:"laurierblaadje",c:"voorraad"},{q:null,u:"",n:"verse peterselie",c:"groente"},{q:null,u:"",n:"olijfolie",c:"voorraad"},{q:null,u:"",n:"pul biber",c:"voorraad"},{q:null,u:"",n:"gerookt paprikapoeder",c:"voorraad"},{q:null,u:"",n:"oregano",c:"voorraad"},{q:null,u:"",n:"komijn",c:"voorraad"},{q:null,u:"",n:"tomatenpuree",c:"pot"},{q:null,u:"",n:"peper",c:"voorraad"},{q:null,u:"",n:"zout",c:"voorraad"}],
     steps:["Verwarm de oven voor op 200 °C en spoel de rijst.","Meng de marinade en hussel ui, knoflook en kip ermee. Voeg puntpaprika toe.","Bak 30 minuten.","Roer rijst en een deel van de fijngesneden paprika door de schaal.","Voeg tomaat, laurier, citroen en bouillon toe en bak nog ongeveer 30 minuten.","Bestrooi met peterselie."] },
 
-  { id:"ravioli-spinazie", meal:"diner", emoji:"🥟", source:"https://www.leukerecepten.nl/recepten/ravioli-met-spinazie-en-mozzarella/",
+  { id:"ravioli-spinazie", meal:"diner", type:"pasta", emoji:"🥟", source:"https://www.leukerecepten.nl/recepten/ravioli-met-spinazie-en-mozzarella/",
     title:"Ravioli met spinazie en mozzarella", time:"ca. 20 min",
     ing:[{q:250,u:"g",n:"vegetarische ravioli",c:"pasta"},{q:400,u:"g",n:"verse spinazie",c:"groente"},{q:1,u:"bol",n:"mozzarella",c:"zuivel"},{q:125,u:"g",n:"kruidenroomkaas",c:"zuivel"},{q:2,u:"el",n:"zongedroogde tomaatjes",c:"pot"},{q:1,u:"",n:"ui",c:"groente"},{q:null,u:"",n:"verse peterselie",c:"groente"}],
     steps:["Kook de ravioli volgens de verpakking. Snijd ondertussen de ui fijn en bak deze in een grote koekenpan glazig.","Voeg de verse spinazie toe en laat die slinken.","Roer de kruidenroomkaas erdoor en meng goed. Snijd de zongedroogde tomaatjes fijn en voeg ze toe.","Giet de gare ravioli af en schep ze door het spinaziemengsel.","Scheur de mozzarella in stukjes en verdeel over de ravioli. Garneer met verse peterselie."] },
@@ -267,27 +268,27 @@ const SEED_RECIPES = [
     ing:[{q:1,u:"",n:"appel",c:"groente"},{q:500,u:"g",n:"voorgekookte rode bieten",c:"groente"},{q:2,u:"el",n:"balsamicoazijn",c:"pot"},{q:2,u:"el",n:"yoghurt",c:"zuivel"},{q:1,u:"el",n:"citroensap",c:"voorraad"},{q:50,u:"g",n:"walnoten",c:"voorraad"},{q:40,u:"g",n:"rucola",c:"groente"},{q:100,u:"g",n:"feta",c:"zuivel"},{q:null,u:"",n:"olijfolie",c:"voorraad"},{q:null,u:"",n:"peper",c:"voorraad"},{q:null,u:"",n:"zout",c:"voorraad"}],
     steps:["Laat de bieten uitlekken en snijd ze in stukjes. Schil de appel en snijd die ook in stukjes.","Doe de bieten en appel in een kom en meng met citroensap, balsamico, yoghurt, peper en zout.","Meng de walnoten, rucola en feta er losjes door.","Besprenkel met olijfolie en serveer."] },
 
-  { id:"ovenschotel-kip-broccoli", meal:"diner", emoji:"🥘", source:"https://www.leukerecepten.nl/recepten/ovenschotel-met-kip-en-broccoli/",
+  { id:"ovenschotel-kip-broccoli", meal:"diner", type:"kip", emoji:"🥘", source:"https://www.leukerecepten.nl/recepten/ovenschotel-met-kip-en-broccoli/",
     title:"Ovenschotel met kip en broccoli", time:"ca. 70 min",
     ing:[{q:200,u:"g",n:"kip",c:"vlees"},{q:700,u:"g",n:"krieltjes",c:"pasta"},{q:400,u:"g",n:"broccoli",c:"groente"},{q:1,u:"",n:"rode paprika",c:"groente"},{q:1,u:"",n:"ui",c:"groente"},{q:1,u:"el",n:"cajunkruiden",c:"voorraad"},{q:1,u:"tl",n:"gerookt paprikapoeder",c:"voorraad"},{q:75,u:"g",n:"geraspte kaas",c:"zuivel"},{q:200,u:"ml",n:"crème fraîche",c:"zuivel"},{q:1,u:"",n:"ei",c:"zuivel"},{q:100,u:"ml",n:"melk",c:"zuivel"},{q:null,u:"",n:"peper",c:"voorraad"},{q:null,u:"",n:"zout",c:"voorraad"},{q:null,u:"",n:"olie/boter",c:"voorraad"}],
     steps:["Verwarm de oven voor op 180 °C.","Snijd de broccoli in roosjes. Snijd de harde delen van de stam weg en snijd de rest in stukjes.","Kook de krieltjes en de stukjes broccolistronk ongeveer 5 minuten voor in een pan met water en laat goed uitlekken.","Snipper de ui en fruit deze in een pan met een beetje olie of boter.","Voeg de paprika in blokjes toe en bak kort mee.","Voeg de kip in stukjes toe met de cajunkruiden en het paprikapoeder en roerbak een paar minuten.","Schep de voorgekookte krieltjes en broccoli erdoor en meng goed.","Doe alles in een grote ingevette ovenschaal.","Klop de crème fraîche los en roer het ei en de melk erdoor met een snufje peper en zout.","Giet het roommengsel over de schaal.","Bestrooi met kaas en zet circa 40 minuten in de oven.","Controleer of alles gaar is en laat de schotel een paar minuten rusten voor het serveren."] },
 
-  { id:"paddenstoelenrisotto", meal:"diner", emoji:"🍄",
+  { id:"paddenstoelenrisotto", meal:"diner", type:"vega", emoji:"🍄",
     title:"Paddenstoelenrisotto", time:"ca. 30 min",
     ing:[{q:200,u:"g",n:"risottorijst",c:"pasta"},{q:200,u:"g",n:"kastanjechampignons",c:"groente"},{q:100,u:"g",n:"paddenstoelenmix met kruiden",c:"groente"},{q:30,u:"g",n:"geraspte Parmezaanse kaas",c:"zuivel"},{q:0.5,u:"",n:"ui",c:"groente"},{q:500,u:"ml",n:"groentebouillon",c:"pot"},{q:1,u:"el",n:"boter",c:"zuivel"},{q:1,u:"teen",n:"knoflook",c:"groente"},{q:null,u:"",n:"peper",c:"voorraad"},{q:null,u:"",n:"zout",c:"voorraad"}],
     steps:["Maak 500 ml groentebouillon. Pel ½ ui en snij fijn. Verhit een beetje boter in een ruime kookpan en fruit de ui hierin aan.","Bak 200 g risottorijst gedurende 1 minuut mee met de ui en blus af met een flinke scheut bouillon.","Voeg vervolgens beetje bij beetje de bouillon toe en laat de risotto in 15 tot 20 minuten zachtjes gaarkoken. De risotto is klaar als deze nog een lichte bite heeft (al dente).","Snij ondertussen 200 g kastanjechampignons en 100 g paddenstoelenmix in plakjes. Ris de blaadjes van de oregano en tijm (deze verse kruiden zitten bij de paddenstoelenmix). Pel en snij 1 teentje knoflook fijn.","Verhit 1 el boter in een koekenpan en bak de champignons, paddenstoelen, knoflook en kruiden met een flinke snuf zout en peper op hoog vuur gaar en goudbruin. Dit duurt ongeveer 10 minuten.","Roer, wanneer de risotto bijna klaar is, de helft van de paddenstoelen en de helft van de Parmezaanse kaas door de risotto. Proef en breng eventueel verder op smaak met peper en zout.","Serveer de risotto met de rest van de paddenstoelen en Parmezaanse kaas.","Tip: blus de rijst vóór de bouillon af met een flinke scheut witte wijn, of bak wat pancetta uit en verdeel over de risotto. Extra lekker met geitenkaas."] },
 
-  { id:"tortellini-spinazie", meal:"diner", emoji:"🍝",
+  { id:"tortellini-spinazie", meal:"diner", type:"pasta", emoji:"🍝",
     title:"Tortellini in romige spinaziesaus", time:"ca. 20 min",
     ing:[{q:125,u:"g",n:"tortellini",c:"pasta"},{q:150,u:"g",n:"gerookte spekreepjes",c:"vlees"},{q:125,u:"g",n:"kastanjechampignons",c:"groente"},{q:250,u:"g",n:"fijngehakte diepvriesspinazie",c:"groente"},{q:100,u:"g",n:"crème fraîche",c:"zuivel"},{q:20,u:"g",n:"geraspte grana padano",c:"zuivel"},{q:15,u:"ml",n:"olijfolie",c:"voorraad"},{q:null,u:"",n:"peper",c:"voorraad"},{q:null,u:"",n:"zout",c:"voorraad"}],
     steps:["Breng een pan water aan de kook. Bereid 125 g tortellini volgens de aanwijzingen op de verpakking. Bewaar bij het afgieten een kopje van het kookvocht. Haal de spinazie uit de vriezer zodat die alvast een beetje kan ontdooien.","Snij 125 g kastanjechampignons in partjes. Bak in een ruime koekenpan 150 g gerookte spekreepjes in 6 à 8 minuten gaar en krokant. Haal de spekreepjes uit de pan en laat even uitlekken op een stukje keukenpapier.","Voeg de kastanjechampignons toe aan de pan van de spekreepjes en bak in 4 à 5 minuten goudbruin.","Voeg vervolgens 250 g fijngehakte spinazie toe aan de pan en roer er 100 g crème fraîche doorheen. Voeg de spekreepjes weer toe aan de pan.","Roer de tortellini door de romige spinaziesaus en voeg eventueel een scheutje kookvocht toe. Breng op smaak met peper en zout en bestrooi voor het serveren met wat geraspte grana padano.","Tip: liever vega? Vervang de gerookte spekreepjes door vega spekjes."] },
 
-  { id:"spaghetti-carbonara", meal:"diner", emoji:"🍝",
+  { id:"spaghetti-carbonara", meal:"diner", type:"pasta", emoji:"🍝",
     title:"Spaghetti alla carbonara met pancetta", time:"ca. 20 min",
     ing:[{q:175,u:"g",n:"spaghetti",c:"pasta"},{q:2,u:"",n:"eieren",c:"zuivel"},{q:50,u:"g",n:"Parmigiano reggiano",c:"zuivel"},{q:113,u:"g",n:"pancettablokjes",c:"vlees"},{q:null,u:"",n:"zout",c:"voorraad"},{q:null,u:"",n:"peper",c:"voorraad"}],
     steps:["Breng een ruime pan met water en 1 el zout aan de kook en kook hierin 175 g spaghetti volgens de aanwijzingen op de verpakking. Giet af, maar hou een kopje kookvocht achter.","Rasp 50 g Parmezaanse kaas zo fijn mogelijk.","Meng in een kom 2 eieren met de Parmezaanse kaas en 1 tl vers gemalen zwarte peper. Roer hier ook een klein scheutje kookvocht van de spaghetti door.","Bak in een ruime koekenpan 113 g pancettablokjes 4 tot 5 minuten op middelhoog vuur. Let op: zet daarna het vuur uit!","Dit moet zo snel mogelijk gebeuren. Voeg de warme, net afgegoten spaghetti toe aan de pan met pancetta. Meng kort en schenk het ei-kaasmengsel erbij in de pan. De warmte van de spaghetti en de pan zorgt ervoor dat het ei gaart. Blijf goed roeren! Zo ontstaat er geen roerei terwijl de eieren toch goed garen. Verdun de saus eventueel met een extra lepeltje kookvocht.","Serveer de carbonara met extra Parmezaanse kaas naar smaak.","Tip: liever met groente? Kook dan 150 g doperwten de laatste minuut met de spaghetti mee."] },
 
-  { id:"soto-ajam", meal:"diner", emoji:"🍲", source:"https://smaakmenutie.nl/soto-ajam/",
+  { id:"soto-ajam", meal:"diner", type:"kip", emoji:"🍲", source:"https://smaakmenutie.nl/soto-ajam/",
     title:"Soto ajam (Indische maaltijdsoep met kip)", time:"ca. 45 min",
     ing:[{q:225,u:"g",n:"kipfilet",c:"vlees"},{q:100,u:"g",n:"witte rijst",c:"pasta"},{q:50,u:"g",n:"taugé",c:"groente"},{q:2,u:"teen",n:"knoflook",c:"groente"},{q:2,u:"",n:"eieren",c:"zuivel"},{q:1.5,u:"",n:"salam blad (Indisch laurier)",c:"voorraad"},{q:1.5,u:"",n:"bouillonblokje (kip en/of groente)",c:"voorraad"},{q:0.5,u:"",n:"ui",c:"groente"},{q:0.5,u:"stengel",n:"sereh (citroengras)",c:"groente"},{q:1.5,u:"el",n:"ketjap manis",c:"pot"},{q:0.5,u:"tl",n:"djahé",c:"voorraad"},{q:0.5,u:"tl",n:"gemalen laos",c:"voorraad"},{q:null,u:"",n:"verse peterselie",c:"groente"},{q:null,u:"",n:"gebakken uitjes",c:"voorraad"}],
     steps:["Neem een ruime pan en vul met 1 liter water. Voeg de bouillonblokjes toe en breng tegen de kook.","Voeg de fijngesneden knoflook, de grofgehakte ui, ketjap manis, djahé, gemalen laos, salamblaadjes en de gekneusde stengel sereh toe.","Voeg de kipfilet toe. Doe het deksel op de pan en laat de kip in 20-30 minuten gaar koken.","Kook ondertussen de rijst en kook de eieren in 6 minuten halfzacht.","Haal de kipfilet uit de pan en trek het vlees met twee vorken in dunne reepjes (pulled). Zet apart.","Blancheer de schoongemaakte taugé 1 minuutje in kokend water en spoel af onder koud water.","Neem een diep bord: begin met rijst, dan de kip, taugé en een gehalveerd eitje. Schenk de hete soep erover en maak af met verse peterselie, gebakken uitjes en eventueel sambal of chilisaus."] }
@@ -441,7 +442,7 @@ function renderSel(key){
   el.querySelectorAll('.s-plus').forEach(b=>{ b.onclick=()=>bump(b.dataset.id,1); });
 }
 function openRecipe(id){
-  mealFilter='alle'; searchQuery='';
+  mealFilter='alle'; searchQuery=''; dinnerType='alle';
   const si=document.getElementById('recipeSearch');
   if(si){ si.value=''; document.getElementById('searchClear').classList.add('hidden'); }
   renderChips(); renderRecipes();
@@ -608,7 +609,18 @@ function copyPrevWeek(){
 
 /* ---------- RECIPES VIEW ---------- */
 const MEALS={ontbijt:"Ontbijt",lunch:"Lunch",diner:"Diner",tussendoor:"Tussendoor"};
-let mealFilter='alle', searchQuery='';
+const DINNER_TYPES=[['pasta','Pasta'],['kip','Kip'],['vis','Vis'],['vlees','Vlees'],['vega','Vegetarisch']];
+let mealFilter='alle', searchQuery='', dinnerType='alle';
+/* Bepaalt het dinertype: gebruikt r.type als dat er is, anders een gok op basis van ingrediënten/titel. */
+function inferDinnerType(r){
+  if(r.type && DINNER_TYPES.some(t=>t[0]===r.type)) return r.type;
+  const hay=(r.ing.map(g=>g.n||'').join(' ')+' '+(r.title||'')).toLowerCase();
+  if(/\bkip\w*/.test(hay)) return 'kip';
+  if(/\b(vis|zalm|tonijn|garnaa?l\w*|mossel\w*|kabeljauw|forel)\b/.test(hay)) return 'vis';
+  if(/\b(pasta|spaghetti|tortellini|ravioli|macaroni|tagliatelle|penne|fusilli|lasagne|noedels?|mie)\b/.test(hay)) return 'pasta';
+  if(r.ing.some(g=>g.c==='vlees')) return 'vlees';
+  return 'vega';
+}
 
 function renderChips(){
   const bar=document.getElementById('mealFilter'); bar.innerHTML='';
@@ -616,7 +628,21 @@ function renderChips(){
     const b=document.createElement('button');
     b.className='chip'+(mealFilter===key?' active':'');
     b.textContent=label;
-    b.onclick=()=>{ mealFilter=key; renderChips(); renderRecipes(); };
+    b.onclick=()=>{ mealFilter=key; dinnerType='alle'; renderChips(); renderRecipes(); };
+    bar.appendChild(b);
+  });
+  renderDinnerTypeChips();
+}
+function renderDinnerTypeChips(){
+  const bar=document.getElementById('dinnerTypeFilter');
+  bar.classList.toggle('hidden', mealFilter!=='diner');
+  if(mealFilter!=='diner'){ bar.innerHTML=''; return; }
+  bar.innerHTML='';
+  [['alle','Alle'],...DINNER_TYPES].forEach(([key,label])=>{
+    const b=document.createElement('button');
+    b.className='chip'+(dinnerType===key?' active':'');
+    b.textContent=label;
+    b.onclick=()=>{ dinnerType=key; renderDinnerTypeChips(); renderRecipes(); };
     bar.appendChild(b);
   });
 }
@@ -629,7 +655,7 @@ function hues(str){ let h=0; for(let i=0;i<str.length;i++) h=(h*31+str.charCodeA
 
 function renderRecipes(){
   const root=document.getElementById('recipes'); root.innerHTML='';
-  const list=allRecipes().filter(r=>(mealFilter==='alle'||r.meal===mealFilter) && matchesSearch(r));
+  const list=allRecipes().filter(r=>(mealFilter==='alle'||r.meal===mealFilter) && (mealFilter!=='diner'||dinnerType==='alle'||inferDinnerType(r)===dinnerType) && matchesSearch(r));
   if(!list.length){
     root.innerHTML='<div class="empty">'+(searchQuery?'Geen recepten gevonden voor \u201c'+searchQuery+'\u201d.':'Nog geen recepten in deze categorie.<br>Stuur er een naar mij, dan zet ik \u2019m erbij.')+'</div>';
     return;
@@ -681,7 +707,7 @@ function surprise(){
   const list=allRecipes();
   if(!list.length) return;
   const r=list[Math.floor(Math.random()*list.length)];
-  mealFilter='alle'; searchQuery='';
+  mealFilter='alle'; searchQuery=''; dinnerType='alle';
   const si=document.getElementById('recipeSearch');
   if(si){ si.value=''; document.getElementById('searchClear').classList.add('hidden'); }
   renderChips(); renderRecipes();
@@ -841,14 +867,14 @@ function confirmAddRecipe(){
   const au=document.getElementById('addUrl'); if(au) au.value='';
   document.getElementById('addStatus').textContent='';
   document.getElementById('addPreview').innerHTML='';
-  mealFilter='alle'; searchQuery='';
+  mealFilter='alle'; searchQuery=''; dinnerType='alle';
   renderChips(); renderRecipes(); refreshHome();
   show('recipesView'); setHeader('recipes');
   window.scrollTo(0,0);
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='15';
+const APP_VERSION='16';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1'];
