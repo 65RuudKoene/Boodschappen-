@@ -193,6 +193,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
         <button class="clr hidden" id="pickSearchClear" aria-label="Wissen">✕</button>
       </div>
       <div class="chips" id="pickFilter"></div>
+      <div class="chips hidden" id="pickDinnerTypeFilter"></div>
       <div id="pickList"></div>
     </div>
   </div>
@@ -333,7 +334,7 @@ let weekServings=JSON.parse(localStorage.getItem('week-servings-v1')||'{}');
 let pantry=JSON.parse(localStorage.getItem('pantry-v1')||'[]');
 let recipeNotes=JSON.parse(localStorage.getItem('recipe-notes-v1')||'{}');
 let doneHidden=false, pickerOpen=false;
-let pickMeal='alle', pickQuery='';
+let pickMeal='alle', pickQuery='', pickDinnerType='alle';
 function persist(k,val){ localStorage.setItem(k,JSON.stringify(val)); syncPush(k,val); }
 function savePlanner(){ persist('planner-weeks-v1',plannerWeeks); }
 function saveChecks(){ persist('boodschappen-checks-v3',checksAll); }
@@ -460,13 +461,27 @@ function renderPickChips(){
     const b=document.createElement('button');
     b.className='chip'+(pickMeal===k?' active':'');
     b.textContent=label;
-    b.onclick=()=>{ pickMeal=k; renderPickChips(); renderPickList(curKey()); };
+    b.onclick=()=>{ pickMeal=k; pickDinnerType='alle'; renderPickChips(); renderPickList(curKey()); };
+    bar.appendChild(b);
+  });
+  renderPickDinnerTypeChips();
+}
+function renderPickDinnerTypeChips(){
+  const bar=document.getElementById('pickDinnerTypeFilter');
+  bar.classList.toggle('hidden', pickMeal!=='diner');
+  if(pickMeal!=='diner'){ bar.innerHTML=''; return; }
+  bar.innerHTML='';
+  [['alle','Alle'],...DINNER_TYPES].forEach(([key,label])=>{
+    const b=document.createElement('button');
+    b.className='chip'+(pickDinnerType===key?' active':'');
+    b.textContent=label;
+    b.onclick=()=>{ pickDinnerType=key; renderPickDinnerTypeChips(); renderPickList(curKey()); };
     bar.appendChild(b);
   });
 }
 function renderPickList(key){
   const el=document.getElementById('pickList'), ids=plannerWeeks[key]||[];
-  const list=allRecipes().filter(r=>(pickMeal==='alle'||r.meal===pickMeal) && pickMatches(r));
+  const list=allRecipes().filter(r=>(pickMeal==='alle'||r.meal===pickMeal) && (pickMeal!=='diner'||pickDinnerType==='alle'||inferDinnerType(r)===pickDinnerType) && pickMatches(r));
   if(!list.length){ el.innerHTML='<div class="empty">Geen recepten gevonden.</div>'; return; }
   el.innerHTML=list.map(r=>'<label class="pick-item"><input type="checkbox" data-id="'+r.id+'"'+(ids.includes(r.id)?' checked':'')+'><span>'+r.emoji+' '+r.title+'</span></label>').join('');
   el.querySelectorAll('input').forEach(cb=>{ cb.onchange=()=>toggleRecipeInWeek(key,cb.dataset.id,cb.checked); });
@@ -874,7 +889,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='16';
+const APP_VERSION='17';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1'];
