@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self';">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff">
@@ -199,8 +199,20 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <button class="clr hidden" id="searchClear" aria-label="Wissen">✕</button>
   </div>
   <div class="chips" id="mealFilter"></div>
+  <button class="surprise" onclick="showAdd()">➕ Recept toevoegen via link</button>
   <button class="surprise" onclick="surprise()">🎲 Wat eten we vandaag?</button>
   <div id="recipes"></div>
+</section>
+
+<section id="addView" class="hidden">
+  <div class="card">
+    <h2>Recept toevoegen</h2>
+    <div class="badge serv-note">Plak een link naar een recept. De AI leest het uit en zet het klaar voor 2 personen. Daarna kun je het nog controleren voor je het toevoegt.</div>
+    <div class="synced-field"><label for="addUrl">Link naar recept</label><input id="addUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="https://…"></div>
+    <button id="addFetchBtn" class="actionbtn">Ophalen met AI</button>
+    <div id="addStatus" class="badge serv-note" style="margin-top:10px"></div>
+    <div id="addPreview"></div>
+  </div>
 </section>
 
 </main>
@@ -265,7 +277,12 @@ const recipes = [
 ];
 
 const CATS=[["groente","Groente & fruit"],["vlees","Vlees"],["zuivel","Zuivel & gekoeld"],["pasta","Pasta, rijst & aardappelen"],["pot","Potten, blikken & sauzen"],["voorraad","Noten, kruiden & voorraad"]];
-const recipeById=Object.fromEntries(recipes.map(r=>[r.id,r]));
+/* Eigen (via AI toegevoegde) recepten komen erbij en synchroniseren mee. */
+let customRecipes=JSON.parse(localStorage.getItem('custom-recipes-v1')||'[]');
+function allRecipes(){ return recipes.concat(customRecipes); }
+let recipeById={};
+function rebuildIndex(){ recipeById=Object.fromEntries(allRecipes().map(r=>[r.id,r])); }
+rebuildIndex();
 
 /* ---------- HELPERS ---------- */
 function isoWeek(d){
@@ -306,6 +323,7 @@ function saveHidden(){ persist('hidden-recipes-v1',hiddenRecipes); }
 function saveWeekServings(){ persist('week-servings-v1',weekServings); }
 function savePantry(){ persist('pantry-v1',pantry); }
 function saveNotes(){ persist('recipe-notes-v1',recipeNotes); }
+function saveCustom(){ persist('custom-recipes-v1',customRecipes); }
 function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 /* ---------- VOORRAADKAST (heb ik altijd/al in huis) ---------- */
@@ -416,7 +434,7 @@ function renderPickChips(){
 }
 function renderPickList(key){
   const el=document.getElementById('pickList'), ids=plannerWeeks[key]||[];
-  const list=recipes.filter(r=>!hiddenRecipes.includes(r.id) && (pickMeal==='alle'||r.meal===pickMeal) && pickMatches(r));
+  const list=allRecipes().filter(r=>!hiddenRecipes.includes(r.id) && (pickMeal==='alle'||r.meal===pickMeal) && pickMatches(r));
   if(!list.length){ el.innerHTML='<div class="empty">Geen recepten gevonden.</div>'; return; }
   el.innerHTML=list.map(r=>'<label class="pick-item"><input type="checkbox" data-id="'+r.id+'"'+(ids.includes(r.id)?' checked':'')+'><span>'+r.emoji+' '+r.title+'</span></label>').join('');
   el.querySelectorAll('input').forEach(cb=>{ cb.onchange=()=>toggleRecipeInWeek(key,cb.dataset.id,cb.checked); });
@@ -580,7 +598,7 @@ function hues(str){ let h=0; for(let i=0;i<str.length;i++) h=(h*31+str.charCodeA
 
 function renderRecipes(){
   const root=document.getElementById('recipes'); root.innerHTML='';
-  const list=recipes.filter(r=>!hiddenRecipes.includes(r.id) && (mealFilter==='alle'||r.meal===mealFilter) && matchesSearch(r));
+  const list=allRecipes().filter(r=>!hiddenRecipes.includes(r.id) && (mealFilter==='alle'||r.meal===mealFilter) && matchesSearch(r));
   if(!list.length){
     root.innerHTML='<div class="empty">'+(searchQuery?'Geen recepten gevonden voor \u201c'+searchQuery+'\u201d.':'Nog geen recepten in deze categorie.<br>Stuur er een naar mij, dan zet ik \u2019m erbij.')+'</div>';
     return;
@@ -588,7 +606,7 @@ function renderRecipes(){
   list.forEach(r=>{
     const [h1,h2]=hues(r.title);
     const card=document.createElement('article'); card.className='card recipe'; card.id='recipe-'+r.id;
-    const img=document.createElement('img'); img.loading='lazy'; img.alt=r.title; img.src='images/'+r.id+'.jpg'; img.onerror=function(){this.remove();};
+    const img=document.createElement('img'); img.loading='lazy'; img.alt=r.title; img.referrerPolicy='no-referrer'; img.src=r.image?r.image:'images/'+r.id+'.jpg'; img.onerror=function(){this.remove();};
     const thumb=document.createElement('div'); thumb.className='thumb';
     thumb.style.setProperty('--h1','hsl('+h1+' 55% 55%)');
     thumb.style.setProperty('--h2','hsl('+h2+' 55% 42%)');
@@ -629,7 +647,7 @@ function renderRecipes(){
 }
 
 function surprise(){
-  const list=recipes.filter(r=>!hiddenRecipes.includes(r.id));
+  const list=allRecipes().filter(r=>!hiddenRecipes.includes(r.id));
   if(!list.length) return;
   const r=list[Math.floor(Math.random()*list.length)];
   mealFilter='alle'; searchQuery='';
@@ -642,8 +660,8 @@ function surprise(){
 function deleteRecipe(id){
   const r=recipeById[id];
   if(!confirm('"'+(r?r.title:'Dit recept')+'" verwijderen uit de app?')) return;
-  if(!hiddenRecipes.includes(id)) hiddenRecipes.push(id);
-  saveHidden();
+  if(customRecipes.some(x=>x.id===id)){ customRecipes=customRecipes.filter(x=>x.id!==id); saveCustom(); rebuildIndex(); }
+  else { if(!hiddenRecipes.includes(id)) hiddenRecipes.push(id); saveHidden(); }
   Object.keys(plannerWeeks).forEach(k=>{
     plannerWeeks[k]=plannerWeeks[k].filter(x=>x!==id);
     if(!plannerWeeks[k].length) delete plannerWeeks[k];
@@ -659,8 +677,9 @@ function setHeader(view){
   if(view==='shop'){ t.textContent='Boodschappen'; s.textContent='Kies je recepten voor de week; de lijst wordt automatisch samengesteld.'; b.classList.remove('hidden'); }
   if(view==='recipes'){ t.textContent='Recepten'; s.textContent='Al je recepten. Aantal personen kies je per week bij de boodschappen.'; b.classList.remove('hidden'); }
   if(view==='sync'){ t.textContent='Samen delen'; s.textContent='Deel je lijst live met een ander toestel.'; b.classList.remove('hidden'); }
+  if(view==='add'){ t.textContent='Recept toevoegen'; s.textContent='Plak een link, de AI doet de rest.'; b.classList.remove('hidden'); }
 }
-function show(id){ ['homeView','shoppingView','recipesView','syncView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id)); }
+function show(id){ ['homeView','shoppingView','recipesView','syncView','addView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id)); }
 function goHome(){ show('homeView'); setHeader('home'); refreshHome(); window.scrollTo(0,0); }
 function showTab(tab){
   if(tab==='shop'){ show('shoppingView'); setHeader('shop'); renderShopping(); }
@@ -668,12 +687,66 @@ function showTab(tab){
   window.scrollTo(0,0);
 }
 function showSync(){ show('syncView'); setHeader('sync'); renderSyncInfo(); window.scrollTo(0,0); }
+function showAdd(){ show('addView'); setHeader('add'); document.getElementById('addStatus').textContent=''; document.getElementById('addPreview').innerHTML=''; window.scrollTo(0,0); }
+
+/* ---------- RECEPT TOEVOEGEN VIA AI ---------- */
+let previewRecipe=null;
+function slugify(t){ return (t||'recept').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||'recept'; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function validRecipe(r){ return r && typeof r.title==='string' && Array.isArray(r.ing) && Array.isArray(r.steps) && r.ing.length && r.steps.length; }
+async function fetchRecipeFromUrl(){
+  const url=document.getElementById('addUrl').value.trim();
+  const st=document.getElementById('addStatus'), pv=document.getElementById('addPreview');
+  pv.innerHTML=''; previewRecipe=null;
+  if(!/^https?:\/\//i.test(url)){ st.textContent='Plak een geldige link (begint met https://).'; return; }
+  if(!sb){ st.textContent='Je moet ingelogd zijn om de AI te gebruiken.'; return; }
+  st.textContent='Bezig met ophalen en uitlezen… (kan ~10 seconden duren)';
+  try{
+    const res=await sb.functions.invoke('parse-recipe',{ body:{ url:url, household:(syncCfg&&syncCfg.household)||'' } });
+    if(res.error) throw new Error(res.error.message||'onbekende fout');
+    const r=res.data && res.data.recipe ? res.data.recipe : res.data;
+    if(!validRecipe(r)){ throw new Error('geen recept gevonden op deze pagina'); }
+    previewRecipe=r;
+    renderPreview(r);
+    st.textContent='Gevonden! Controleer hieronder en voeg toe.';
+  }catch(e){ st.textContent='Ophalen mislukt: '+(e&&e.message?e.message:e); }
+}
+function renderPreview(r){
+  const pv=document.getElementById('addPreview');
+  const meal=r.meal&&MEALS[r.meal]?MEALS[r.meal]:'';
+  pv.innerHTML='<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px">'
+    +'<h3 style="margin:0 0 2px">'+(r.emoji?r.emoji+' ':'')+esc(r.title)+'</h3>'
+    +'<div class="badge">'+esc(r.time||'')+(meal?' · '+meal:'')+' · 2 personen</div>'
+    +'<h3>Ingrediënten</h3><ul>'+r.ing.map(function(g){return '<li>'+esc(ingText(g))+'</li>';}).join('')+'</ul>'
+    +'<h3>Bereiding</h3><ol>'+r.steps.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ol>'
+    +'</div>';
+  const add=document.createElement('button'); add.className='actionbtn'; add.style.marginTop='6px'; add.textContent='Toevoegen aan app';
+  add.onclick=confirmAddRecipe;
+  const cancel=document.createElement('button'); cancel.className='linkbtn'; cancel.style.marginLeft='10px'; cancel.textContent='Annuleren';
+  cancel.onclick=function(){ previewRecipe=null; document.getElementById('addPreview').innerHTML=''; document.getElementById('addStatus').textContent=''; };
+  pv.appendChild(add); pv.appendChild(cancel);
+}
+function confirmAddRecipe(){
+  const r=previewRecipe; if(!validRecipe(r)) return;
+  let id=slugify(r.title); if(recipeById[id]) id=id+'-'+genId().slice(0,4);
+  const rec={ id:id, title:r.title, time:r.time||'', meal:(r.meal&&MEALS[r.meal])?r.meal:'diner', emoji:r.emoji||'🍽️',
+    ing:r.ing.map(function(g){return {q:(g.q==null?null:g.q),u:g.u||'',n:g.n||'',c:(CATS.some(function(c){return c[0]===g.c;})?g.c:'voorraad')};}),
+    steps:r.steps.slice() };
+  if(r.image) rec.image=r.image;
+  if(r.source) rec.source=r.source;
+  customRecipes.push(rec); saveCustom(); rebuildIndex();
+  previewRecipe=null;
+  mealFilter='alle'; searchQuery='';
+  renderChips(); renderRecipes(); refreshHome();
+  show('recipesView'); setHeader('recipes');
+  requestAnimationFrame(function(){ const el=document.getElementById('recipe-'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); });
+}
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='11';
+const APP_VERSION='12';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
-const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1'];
+const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1'];
 let sb=null, syncCfg=null, syncApplying=false, lastPush={};
 /* wachtwoord -> gedeelde ruimte (cyrb53-hash; het wachtwoord zelf komt niet in de database) */
 function householdFromPass(pw){ let h1=0xdeadbeef,h2=0x41c6ce57; for(let i=0;i<pw.length;i++){ const c=pw.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); } h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909); return 'hh_'+(h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0'); }
@@ -681,6 +754,7 @@ function savedPass(){ return localStorage.getItem('sync-pass-v1')||''; }
 function isEmptyVal(v){ if(v==null) return true; if(Array.isArray(v)) return v.length===0; if(typeof v==='object') return Object.keys(v).length===0; return false; }
 function localVal(k){ try{ const s=localStorage.getItem(k); return s==null?undefined:JSON.parse(s); }catch(e){ return undefined; } }
 function applyIncoming(k,v){
+  if(SYNC_KEYS.indexOf(k)<0) return;
   syncApplying=true;
   if(k==='planner-weeks-v1') plannerWeeks=v||{};
   else if(k==='boodschappen-checks-v3') checksAll=v||{};
@@ -689,6 +763,7 @@ function applyIncoming(k,v){
   else if(k==='week-servings-v1') weekServings=v||{};
   else if(k==='pantry-v1') pantry=v||[];
   else if(k==='recipe-notes-v1') recipeNotes=v||{};
+  else if(k==='custom-recipes-v1'){ customRecipes=v||[]; rebuildIndex(); }
   localStorage.setItem(k,JSON.stringify(v));
   syncApplying=false;
 }
@@ -713,6 +788,7 @@ async function syncConnect(cfg){
   const remote=new Set();
   (res.data||[]).forEach(function(row){ remote.add(row.k); applyIncoming(row.k,row.v); });
   SYNC_KEYS.forEach(function(k){ if(!remote.has(k)){ const v=localVal(k); if(!isEmptyVal(v)) sb.from('app_kv').upsert({household:cfg.household,k:k,v:v,updated_at:new Date().toISOString()}); } });
+  sb.from('app_kv').upsert({household:cfg.household,k:'_active',v:true,updated_at:new Date().toISOString()}); // markering voor toegangscheck AI-functie
   sb.channel('kv-'+cfg.household)
     .on('postgres_changes',{event:'*',schema:'public',table:'app_kv',filter:'household=eq.'+cfg.household},function(payload){
       const row=payload.new; if(row&&row.k&&SYNC_KEYS.indexOf(row.k)>=0){ if(lastPush[row.k]===JSON.stringify(row.v)) return; applyIncoming(row.k,row.v); rerender(); }
@@ -750,9 +826,10 @@ function doLogout(){
 function refreshHome(){
   const ck=now.year+'-W'+now.week, n=(plannerWeeks[ck]||[]).length;
   document.getElementById('homeShopSub').textContent='Week '+now.week+' · '+now.year+(n?' · '+n+' recept'+(n>1?'en':''):'');
-  document.getElementById('homeRecipeSub').textContent=recipes.filter(r=>!hiddenRecipes.includes(r.id)).length+' recepten';
+  document.getElementById('homeRecipeSub').textContent=allRecipes().filter(r=>!hiddenRecipes.includes(r.id)).length+' recepten';
   const sl=document.getElementById('syncLink'); if(sl) sl.textContent=(sb&&syncCfg)?'🔗 Gedeeld — samen delen':'⚙️ Samen delen';
 }
+document.getElementById('addFetchBtn').onclick=fetchRecipeFromUrl;
 document.getElementById('loginBtn').onclick=function(){ doLogin(document.getElementById('loginPass').value); };
 document.getElementById('loginPass').addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(document.getElementById('loginPass').value); });
 document.getElementById('logoutBtn').onclick=function(){ if(confirm('Uitloggen op dit toestel? Je gedeelde lijst blijft bestaan en komt terug zodra je opnieuw inlogt met hetzelfde wachtwoord.')) doLogout(); };
