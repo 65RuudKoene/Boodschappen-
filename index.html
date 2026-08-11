@@ -668,6 +668,7 @@ function rerender(){
 }
 async function syncConnect(cfg){
   if(!(window.supabase&&window.supabase.createClient)) throw new Error('Supabase-bibliotheek niet geladen');
+  try{ cfg=Object.assign({},cfg,{url:new URL(cfg.url).origin}); }catch(e){}
   sb=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:false}});
   syncCfg=cfg;
   const res=await sb.from('app_kv').select('k,v').eq('household',cfg.household);
@@ -701,7 +702,8 @@ function refreshHome(){
   const sl=document.getElementById('syncLink'); if(sl) sl.textContent=(sb&&syncCfg)?'🔗 Gedeeld — samen delen':'⚙️ Samen delen';
 }
 document.getElementById('syncConnectBtn').onclick=async function(){
-  const url=document.getElementById('syncUrl').value.trim().replace(/\/+$/,'');
+  let url=document.getElementById('syncUrl').value.trim();
+  try{ url=new URL(url).origin; }catch(e){ url=url.replace(/\/+$/,''); }
   const key=document.getElementById('syncKey').value.trim();
   const household=document.getElementById('syncHome').value.trim();
   const st=document.getElementById('syncStatus');
