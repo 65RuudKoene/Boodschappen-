@@ -112,9 +112,28 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .synced-field input{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px}
 #syncView .actionbtn{margin-top:6px}
 .syncbadge{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--accent);border-radius:8px;padding:2px 7px;margin-left:8px;vertical-align:middle}
+.login-gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-card{background:var(--card);border-radius:20px;padding:28px 22px calc(28px + env(safe-area-inset-bottom));box-shadow:0 1px 3px rgba(0,0,0,.06);width:100%;max-width:360px;text-align:center}
+.login-emoji{font-size:44px;line-height:1;margin-bottom:8px}
+.login-card h2{font-size:21px;margin:0 0 4px}
+.login-sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+.login-card input{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:12px;padding:12px 14px;font-size:16px;margin-bottom:10px}
+.login-card .actionbtn{width:100%;padding:12px;font-size:16px}
+#loginMsg{display:block;margin-top:10px;min-height:16px}
 </style>
 </head>
 <body>
+
+<div id="loginGate" class="login-gate">
+  <div class="login-card">
+    <div class="login-emoji">🛒</div>
+    <h2>Boodschappen &amp; Recepten</h2>
+    <p class="login-sub">Log in met het gedeelde wachtwoord.</p>
+    <input id="loginPass" type="password" inputmode="text" autocomplete="current-password" placeholder="Wachtwoord">
+    <button id="loginBtn" class="actionbtn">Inloggen</button>
+    <div id="loginMsg" class="badge"></div>
+  </div>
+</div>
 
 <header>
   <button id="backBtn" class="back hidden" onclick="goHome()">‹ Start</button>
@@ -143,13 +162,10 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 <section id="syncView" class="hidden">
   <div class="card">
     <h2>Samen delen</h2>
-    <div class="badge serv-note">Vul dit op beide telefoons hétzelfde in. Dan delen jullie live dezelfde boodschappenlijst, weekplanning en voorraad. Laat het leeg om alles alleen op dit toestel te houden.</div>
-    <div class="synced-field"><label for="syncUrl">Supabase Project URL</label><input id="syncUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="https://xxxx.supabase.co"></div>
-    <div class="synced-field"><label for="syncKey">Anon key</label><input id="syncKey" type="text" autocomplete="off" autocapitalize="off" placeholder="eyJhbGci…"></div>
-    <div class="synced-field"><label for="syncHome">Gedeelde code (zelf kiezen, niet te raden)</label><input id="syncHome" type="text" autocomplete="off" autocapitalize="off" placeholder="bijv. ruud-claudia-7492"></div>
-    <button id="syncConnectBtn" class="actionbtn">Verbinden</button>
-    <button id="syncDisconnectBtn" class="linkbtn hidden">Verbinding verbreken</button>
-    <div id="syncStatus" class="badge serv-note" style="margin-top:12px"></div>
+    <div class="badge serv-note" id="syncInfo"></div>
+    <div class="badge serv-note">Iemand anders geeft je hetzelfde wachtwoord in op zijn telefoon en jullie delen dezelfde lijst, weekplanning en voorraad — live.</div>
+    <button id="changePassBtn" class="linkbtn" style="padding:8px 0">Wachtwoord wijzigen</button>
+    <button id="logoutBtn" class="actionbtn">Uitloggen</button>
   </div>
 </section>
 
@@ -637,12 +653,16 @@ function showTab(tab){
   else { show('recipesView'); setHeader('recipes'); }
   window.scrollTo(0,0);
 }
-function showSync(){ show('syncView'); setHeader('sync'); renderSyncForm(); window.scrollTo(0,0); }
+function showSync(){ show('syncView'); setHeader('sync'); renderSyncInfo(); window.scrollTo(0,0); }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
+const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
+const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1'];
 let sb=null, syncCfg=null, syncApplying=false;
-function getSyncCfg(){ try{ return JSON.parse(localStorage.getItem('sync-config-v1')||'null'); }catch(e){ return null; } }
+/* wachtwoord -> gedeelde ruimte (cyrb53-hash; het wachtwoord zelf komt niet in de database) */
+function householdFromPass(pw){ let h1=0xdeadbeef,h2=0x41c6ce57; for(let i=0;i<pw.length;i++){ const c=pw.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); } h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909); return 'hh_'+(h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0'); }
+function savedPass(){ return localStorage.getItem('sync-pass-v1')||''; }
 function isEmptyVal(v){ if(v==null) return true; if(Array.isArray(v)) return v.length===0; if(typeof v==='object') return Object.keys(v).length===0; return false; }
 function localVal(k){ try{ const s=localStorage.getItem(k); return s==null?undefined:JSON.parse(s); }catch(e){ return undefined; } }
 function applyIncoming(k,v){
@@ -665,6 +685,7 @@ function rerender(){
   refreshHome();
   if(!document.getElementById('shoppingView').classList.contains('hidden')) renderShopping();
   if(!document.getElementById('recipesView').classList.contains('hidden')){ renderChips(); renderRecipes(); }
+  if(!document.getElementById('syncView').classList.contains('hidden')) renderSyncInfo();
 }
 async function syncConnect(cfg){
   if(!(window.supabase&&window.supabase.createClient)) throw new Error('Supabase-bibliotheek niet geladen');
@@ -683,15 +704,30 @@ async function syncConnect(cfg){
     .subscribe();
   rerender();
 }
-function syncDisconnect(){ try{ if(sb) sb.removeAllChannels(); }catch(e){} sb=null; syncCfg=null; localStorage.removeItem('sync-config-v1'); }
-function renderSyncForm(){
-  const cfg=getSyncCfg()||{};
-  document.getElementById('syncUrl').value=cfg.url||'';
-  document.getElementById('syncKey').value=cfg.key||'';
-  document.getElementById('syncHome').value=cfg.household||'';
-  const st=document.getElementById('syncStatus'), dc=document.getElementById('syncDisconnectBtn');
-  if(sb&&syncCfg){ st.textContent='✅ Verbonden — je deelt live met code “'+syncCfg.household+'”.'; dc.classList.remove('hidden'); }
-  else { st.textContent='Nog niet verbonden. Deze telefoon houdt alles alleen lokaal.'; dc.classList.add('hidden'); }
+function renderSyncInfo(){
+  const el=document.getElementById('syncInfo');
+  if(sb&&syncCfg) el.textContent='✅ Ingelogd en live gedeeld. Iedereen die op zijn toestel hetzelfde wachtwoord invult, deelt deze lijst.';
+  else el.textContent='Bezig met verbinden…';
+}
+function showLogin(){ document.getElementById('loginMsg').textContent=''; document.getElementById('loginPass').value=''; document.getElementById('loginGate').classList.remove('hidden'); }
+function hideLogin(){ document.getElementById('loginGate').classList.add('hidden'); }
+async function doLogin(pw){
+  pw=(pw||'').trim();
+  const msg=document.getElementById('loginMsg');
+  if(!pw){ msg.textContent='Vul een wachtwoord in.'; return; }
+  msg.textContent='Inloggen…';
+  localStorage.setItem('sync-pass-v1',pw);
+  hideLogin(); goHome();
+  try{ await syncConnect({url:SUPA_URL,key:SUPA_KEY,household:householdFromPass(pw)}); }
+  catch(e){ console.warn('login sync',e&&e.message?e.message:e); }
+}
+function doLogout(){
+  try{ if(sb) sb.removeAllChannels(); }catch(e){}
+  sb=null; syncCfg=null;
+  localStorage.removeItem('sync-pass-v1');
+  plannerWeeks={}; checksAll={}; manualAll={}; hiddenRecipes=[]; weekServings={}; pantry=[]; recipeNotes={};
+  SYNC_KEYS.forEach(function(k){ localStorage.removeItem(k); });
+  goHome(); showLogin();
 }
 
 /* ---------- INIT ---------- */
@@ -701,22 +737,20 @@ function refreshHome(){
   document.getElementById('homeRecipeSub').textContent=recipes.filter(r=>!hiddenRecipes.includes(r.id)).length+' recepten';
   const sl=document.getElementById('syncLink'); if(sl) sl.textContent=(sb&&syncCfg)?'🔗 Gedeeld — samen delen':'⚙️ Samen delen';
 }
-document.getElementById('syncConnectBtn').onclick=async function(){
-  let url=document.getElementById('syncUrl').value.trim();
-  try{ url=new URL(url).origin; }catch(e){ url=url.replace(/\/+$/,''); }
-  const key=document.getElementById('syncKey').value.trim();
-  const household=document.getElementById('syncHome').value.trim();
-  const st=document.getElementById('syncStatus');
-  if(!url||!key||!household){ st.textContent='Vul alle drie de velden in.'; return; }
-  st.textContent='Verbinden…';
-  try{
-    await syncConnect({url:url,key:key,household:household});
-    localStorage.setItem('sync-config-v1',JSON.stringify({url:url,key:key,household:household}));
-    renderSyncForm();
-    st.textContent='✅ Gelukt! Vul op de andere telefoon exact dezelfde gegevens in.';
-  }catch(e){ st.textContent='Verbinden mislukt: '+(e&&e.message?e.message:e)+'. Controleer de URL, de anon key en of je de SQL hebt uitgevoerd.'; }
+document.getElementById('loginBtn').onclick=function(){ doLogin(document.getElementById('loginPass').value); };
+document.getElementById('loginPass').addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(document.getElementById('loginPass').value); });
+document.getElementById('logoutBtn').onclick=function(){ if(confirm('Uitloggen op dit toestel? Je gedeelde lijst blijft bestaan en komt terug zodra je opnieuw inlogt met hetzelfde wachtwoord.')) doLogout(); };
+document.getElementById('changePassBtn').onclick=async function(){
+  const np=prompt('Nieuw gedeeld wachtwoord.\nVul dit op álle toestellen hetzelfde in:');
+  if(!np||!np.trim()) return;
+  const pw=np.trim();
+  localStorage.setItem('sync-pass-v1',pw);
+  try{ if(sb) sb.removeAllChannels(); }catch(e){}
+  sb=null; syncCfg=null;
+  try{ await syncConnect({url:SUPA_URL,key:SUPA_KEY,household:householdFromPass(pw)}); }catch(e){}
+  renderSyncInfo();
+  alert('Wachtwoord gewijzigd. Vul hetzelfde wachtwoord op de andere toestellen in.');
 };
-document.getElementById('syncDisconnectBtn').onclick=function(){ syncDisconnect(); renderSyncForm(); rerender(); };
 const searchInput=document.getElementById('recipeSearch'), searchClear=document.getElementById('searchClear');
 searchInput.oninput=()=>{ searchQuery=searchInput.value.trim(); searchClear.classList.toggle('hidden',searchQuery===''); renderRecipes(); };
 searchClear.onclick=()=>{ searchInput.value=''; searchQuery=''; searchClear.classList.add('hidden'); renderRecipes(); searchInput.focus(); };
@@ -726,7 +760,7 @@ renderRecipes();
 initPickSearch();
 goHome();
 
-(function(){ const cfg=getSyncCfg(); if(cfg&&cfg.url&&cfg.key&&cfg.household){ syncConnect(cfg).catch(function(e){ console.warn('sync init',e&&e.message?e.message:e); }); } })();
+(function(){ const pw=savedPass(); if(pw){ hideLogin(); syncConnect({url:SUPA_URL,key:SUPA_KEY,household:householdFromPass(pw)}).catch(function(e){ console.warn('sync init',e&&e.message?e.message:e); }); } else { showLogin(); } })();
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
