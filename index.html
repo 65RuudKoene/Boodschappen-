@@ -241,7 +241,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
    Categorieën: groente, vlees, zuivel, pasta, pot, voorraad
    De app telt gelijke ingrediënten (zelfde naam + eenheid) automatisch op. */
 
-const recipes = [
+const SEED_RECIPES = [
   { id:"rode-curry", meal:"diner", emoji:"🍛", source:"https://www.pro-activ.com/nl-be/recept/rode-curry-met-kip-en-groenten-194181",
     title:"Rode curry met kip en groenten", time:"ca. 20 min",
     ing:[{q:250,u:"g",n:"kipfilet",c:"vlees"},{q:1,u:"",n:"rode ui",c:"groente"},{q:1,u:"",n:"rode paprika",c:"groente"},{q:100,u:"g",n:"wortel",c:"groente"},{q:0.5,u:"blik",n:"kokosmelk",c:"pot"},{q:1,u:"el",n:"rode currypasta",c:"pot"},{q:null,u:"",n:"verse koriander",c:"groente"},{q:1,u:"el",n:"vloeibare bakmargarine",c:"zuivel"},{q:20,u:"g",n:"ProActiv",c:"zuivel"},{q:1,u:"",n:"bouillonblokje",c:"voorraad"},{q:150,u:"g",n:"rijst",c:"pasta"}],
@@ -294,9 +294,9 @@ const recipes = [
 ];
 
 const CATS=[["groente","Groente & fruit"],["vlees","Vlees"],["zuivel","Zuivel & gekoeld"],["pasta","Pasta, rijst & aardappelen"],["pot","Potten, blikken & sauzen"],["voorraad","Noten, kruiden & voorraad"]];
-/* Eigen (via AI toegevoegde) recepten komen erbij en synchroniseren mee. */
+/* Alle recepten (basisrecepten + via AI toegevoegde) staan hier samen en synchroniseren mee via Supabase. */
 let customRecipes=JSON.parse(localStorage.getItem('custom-recipes-v1')||'[]');
-function allRecipes(){ return recipes.concat(customRecipes); }
+function allRecipes(){ return customRecipes; }
 let recipeById={};
 function rebuildIndex(){ recipeById=Object.fromEntries(allRecipes().map(r=>[r.id,r])); }
 rebuildIndex();
@@ -326,7 +326,8 @@ function shiftWeek(d,n){ const x=new Date(d); x.setDate(x.getDate()+n*7); return
 let plannerWeeks=JSON.parse(localStorage.getItem('planner-weeks-v1')||'{}');
 let checksAll=JSON.parse(localStorage.getItem('boodschappen-checks-v3')||'{}');
 let manualAll=JSON.parse(localStorage.getItem('planner-manual-v1')||'{}');
-let hiddenRecipes=JSON.parse(localStorage.getItem('hidden-recipes-v1')||'[]');
+/* Basisrecepten die de gebruiker heeft verwijderd; voorkomt dat ze terugkomen bij het samenvoegen. */
+let deletedSeedIds=JSON.parse(localStorage.getItem('hidden-recipes-v1')||'[]');
 let weekServings=JSON.parse(localStorage.getItem('week-servings-v1')||'{}');
 let pantry=JSON.parse(localStorage.getItem('pantry-v1')||'[]');
 let recipeNotes=JSON.parse(localStorage.getItem('recipe-notes-v1')||'{}');
@@ -336,12 +337,25 @@ function persist(k,val){ localStorage.setItem(k,JSON.stringify(val)); syncPush(k
 function savePlanner(){ persist('planner-weeks-v1',plannerWeeks); }
 function saveChecks(){ persist('boodschappen-checks-v3',checksAll); }
 function saveManual(){ persist('planner-manual-v1',manualAll); }
-function saveHidden(){ persist('hidden-recipes-v1',hiddenRecipes); }
+function saveDeletedSeeds(){ persist('hidden-recipes-v1',deletedSeedIds); }
 function saveWeekServings(){ persist('week-servings-v1',weekServings); }
 function savePantry(){ persist('pantry-v1',pantry); }
 function saveNotes(){ persist('recipe-notes-v1',recipeNotes); }
 function saveCustom(){ persist('custom-recipes-v1',customRecipes); }
 function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+/* Voegt basisrecepten toe die nog ontbreken (nieuw, of nog nooit gemigreerd) — overslaat wat de gebruiker al verwijderde. */
+function mergeSeedRecipes(){
+  let changed=false;
+  SEED_RECIPES.forEach(function(sr){
+    if(deletedSeedIds.includes(sr.id)) return;
+    if(customRecipes.some(function(r){ return r.id===sr.id; })) return;
+    customRecipes.push(JSON.parse(JSON.stringify(sr)));
+    changed=true;
+  });
+  if(changed){ saveCustom(); rebuildIndex(); }
+  return changed;
+}
+/* Aanroep gebeurt pas in de INIT-sectie onderaan (na declaratie van sb/syncCfg), zodat persist()->syncPush() geen variabele leest die nog niet bestaat. */
 
 /* ---------- VOORRAADKAST (heb ik altijd/al in huis) ---------- */
 function addToPantry(n){ if(!pantry.includes(n)) pantry.push(n); savePantry(); }
@@ -375,7 +389,7 @@ function scaleSteps(r,s){
 /* ---------- SHOPPING BUILD ---------- */
 function buildShopping(key,ids){
   const map={}, order=[];
-  ids.forEach(id=>{ const r=recipeById[id]; if(!r || hiddenRecipes.includes(id)) return;
+  ids.forEach(id=>{ const r=recipeById[id]; if(!r) return;
     const s=getWeekServings(key,id);
     r.ing.forEach(g=>{
       if(pantry.includes(g.n)) return;
@@ -451,7 +465,7 @@ function renderPickChips(){
 }
 function renderPickList(key){
   const el=document.getElementById('pickList'), ids=plannerWeeks[key]||[];
-  const list=allRecipes().filter(r=>!hiddenRecipes.includes(r.id) && (pickMeal==='alle'||r.meal===pickMeal) && pickMatches(r));
+  const list=allRecipes().filter(r=>(pickMeal==='alle'||r.meal===pickMeal) && pickMatches(r));
   if(!list.length){ el.innerHTML='<div class="empty">Geen recepten gevonden.</div>'; return; }
   el.innerHTML=list.map(r=>'<label class="pick-item"><input type="checkbox" data-id="'+r.id+'"'+(ids.includes(r.id)?' checked':'')+'><span>'+r.emoji+' '+r.title+'</span></label>').join('');
   el.querySelectorAll('input').forEach(cb=>{ cb.onchange=()=>toggleRecipeInWeek(key,cb.dataset.id,cb.checked); });
@@ -587,7 +601,7 @@ function copyPrevWeek(){
   const key=curKey(), pk=prevWeekKey(), src=plannerWeeks[pk]||[];
   if(!src.length) return;
   const set=new Set(plannerWeeks[key]||[]);
-  src.forEach(id=>{ if(recipeById[id] && !hiddenRecipes.includes(id)){ set.add(id); const sv=getWeekServings(pk,id); if(sv!==BASE_SERV) setWeekServings(key,id,sv); } });
+  src.forEach(id=>{ if(recipeById[id]){ set.add(id); const sv=getWeekServings(pk,id); if(sv!==BASE_SERV) setWeekServings(key,id,sv); } });
   if(set.size) plannerWeeks[key]=[...set];
   savePlanner(); renderShopping();
 }
@@ -615,7 +629,7 @@ function hues(str){ let h=0; for(let i=0;i<str.length;i++) h=(h*31+str.charCodeA
 
 function renderRecipes(){
   const root=document.getElementById('recipes'); root.innerHTML='';
-  const list=allRecipes().filter(r=>!hiddenRecipes.includes(r.id) && (mealFilter==='alle'||r.meal===mealFilter) && matchesSearch(r));
+  const list=allRecipes().filter(r=>(mealFilter==='alle'||r.meal===mealFilter) && matchesSearch(r));
   if(!list.length){
     root.innerHTML='<div class="empty">'+(searchQuery?'Geen recepten gevonden voor \u201c'+searchQuery+'\u201d.':'Nog geen recepten in deze categorie.<br>Stuur er een naar mij, dan zet ik \u2019m erbij.')+'</div>';
     return;
@@ -664,7 +678,7 @@ function renderRecipes(){
 }
 
 function surprise(){
-  const list=allRecipes().filter(r=>!hiddenRecipes.includes(r.id));
+  const list=allRecipes();
   if(!list.length) return;
   const r=list[Math.floor(Math.random()*list.length)];
   mealFilter='alle'; searchQuery='';
@@ -677,8 +691,9 @@ function surprise(){
 function deleteRecipe(id){
   const r=recipeById[id];
   if(!confirm('"'+(r?r.title:'Dit recept')+'" verwijderen uit de app?')) return;
-  if(customRecipes.some(x=>x.id===id)){ customRecipes=customRecipes.filter(x=>x.id!==id); saveCustom(); rebuildIndex(); }
-  else { if(!hiddenRecipes.includes(id)) hiddenRecipes.push(id); saveHidden(); }
+  customRecipes=customRecipes.filter(x=>x.id!==id); saveCustom();
+  if(SEED_RECIPES.some(sr=>sr.id===id) && !deletedSeedIds.includes(id)){ deletedSeedIds.push(id); saveDeletedSeeds(); }
+  rebuildIndex();
   Object.keys(plannerWeeks).forEach(k=>{
     plannerWeeks[k]=plannerWeeks[k].filter(x=>x!==id);
     if(!plannerWeeks[k].length) delete plannerWeeks[k];
@@ -833,7 +848,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='14';
+const APP_VERSION='15';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1'];
@@ -849,7 +864,7 @@ function applyIncoming(k,v){
   if(k==='planner-weeks-v1') plannerWeeks=v||{};
   else if(k==='boodschappen-checks-v3') checksAll=v||{};
   else if(k==='planner-manual-v1') manualAll=v||{};
-  else if(k==='hidden-recipes-v1') hiddenRecipes=v||[];
+  else if(k==='hidden-recipes-v1') deletedSeedIds=v||[];
   else if(k==='week-servings-v1') weekServings=v||{};
   else if(k==='pantry-v1') pantry=v||[];
   else if(k==='recipe-notes-v1') recipeNotes=v||{};
@@ -877,6 +892,7 @@ async function syncConnect(cfg){
   if(res.error) throw res.error;
   const remote=new Set();
   (res.data||[]).forEach(function(row){ remote.add(row.k); applyIncoming(row.k,row.v); });
+  if(mergeSeedRecipes()) remote.add('custom-recipes-v1'); // basisrecepten die nog ontbraken zijn net toegevoegd en al gepusht
   SYNC_KEYS.forEach(function(k){ if(!remote.has(k)){ const v=localVal(k); if(!isEmptyVal(v)) sb.from('app_kv').upsert({household:cfg.household,k:k,v:v,updated_at:new Date().toISOString()}); } });
   sb.from('app_kv').upsert({household:cfg.household,k:'_active',v:true,updated_at:new Date().toISOString()}); // markering voor toegangscheck AI-functie
   sb.channel('kv-'+cfg.household)
@@ -907,8 +923,9 @@ function doLogout(){
   try{ if(sb) sb.removeAllChannels(); }catch(e){}
   sb=null; syncCfg=null;
   localStorage.removeItem('sync-pass-v1');
-  plannerWeeks={}; checksAll={}; manualAll={}; hiddenRecipes=[]; weekServings={}; pantry=[]; recipeNotes={};
+  plannerWeeks={}; checksAll={}; manualAll={}; deletedSeedIds=[]; weekServings={}; pantry=[]; recipeNotes={}; customRecipes=[];
   SYNC_KEYS.forEach(function(k){ localStorage.removeItem(k); });
+  mergeSeedRecipes(); rebuildIndex();
   goHome(); showLogin();
 }
 
@@ -916,7 +933,7 @@ function doLogout(){
 function refreshHome(){
   const ck=now.year+'-W'+now.week, n=(plannerWeeks[ck]||[]).length;
   document.getElementById('homeShopSub').textContent='Week '+now.week+' · '+now.year+(n?' · '+n+' recept'+(n>1?'en':''):'');
-  document.getElementById('homeRecipeSub').textContent=allRecipes().filter(r=>!hiddenRecipes.includes(r.id)).length+' recepten';
+  document.getElementById('homeRecipeSub').textContent=allRecipes().length+' recepten';
   const sl=document.getElementById('syncLink'); if(sl) sl.textContent=(sb&&syncCfg)?'🔗 Gedeeld — samen delen':'⚙️ Samen delen';
 }
 document.getElementById('addFetchBtn').onclick=fetchRecipe;
@@ -943,6 +960,7 @@ searchClear.onclick=()=>{ searchInput.value=''; searchQuery=''; searchClear.clas
 
 document.getElementById('appVer').textContent='versie '+APP_VERSION;
 document.getElementById('homeVer').textContent='versie '+APP_VERSION;
+mergeSeedRecipes();
 renderChips();
 renderRecipes();
 initPickSearch();
