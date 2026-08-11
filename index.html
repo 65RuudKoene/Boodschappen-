@@ -355,16 +355,27 @@ function buildShopping(key,ids){
 /* ---------- SHOPPING VIEW ---------- */
 function curKey(){ const yw=isoWeek(viewDate); return yw.year+'-W'+yw.week; }
 
-function renderShopping(){
-  const yw=isoWeek(viewDate), key=curKey();
+function renderWeekbar(){
+  const yw=isoWeek(viewDate);
   document.getElementById('weekLabel').innerHTML='Week '+yw.week+' · '+yw.year+((yw.year===now.year&&yw.week===now.week)?'<span class="thisweek">deze week</span>':'');
-  pickerOpen=false;
-  document.getElementById('picker').classList.add('hidden');
-  document.getElementById('pickBtn').textContent='Recepten kiezen';
   const cw=document.getElementById('copyWeekBtn'), src=plannerWeeks[prevWeekKey()]||[];
   if(src.length){ cw.classList.remove('hidden'); cw.textContent='↩︎ Kopieer vorige week ('+src.length+' recept'+(src.length>1?'en':'')+')'; }
   else cw.classList.add('hidden');
+}
+function renderShopping(){
+  const key=curKey();
+  pickerOpen=false;
+  document.getElementById('picker').classList.add('hidden');
+  document.getElementById('pickBtn').textContent='Recepten kiezen';
+  renderWeekbar();
   renderSel(key); renderPicker(key); renderShopWrap(key);
+}
+/* Lichte ververs die het keuzemenu open laat (voor live-updates). */
+function refreshShopping(){
+  const key=curKey();
+  renderWeekbar();
+  renderSel(key); renderShopWrap(key);
+  if(pickerOpen) renderPickList(key);
 }
 function navWeek(dir){ viewDate=shiftWeek(viewDate,dir); renderShopping(); }
 
@@ -413,6 +424,7 @@ function togglePicker(){
   pickerOpen=!pickerOpen;
   document.getElementById('picker').classList.toggle('hidden',!pickerOpen);
   document.getElementById('pickBtn').textContent=pickerOpen?'Klaar met kiezen':'Recepten kiezen';
+  if(pickerOpen) renderPicker(curKey());
 }
 function toggleRecipeInWeek(key,id,on){
   const set=new Set(plannerWeeks[key]||[]);
@@ -659,7 +671,7 @@ function showSync(){ show('syncView'); setHeader('sync'); renderSyncInfo(); wind
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1'];
-let sb=null, syncCfg=null, syncApplying=false;
+let sb=null, syncCfg=null, syncApplying=false, lastPush={};
 /* wachtwoord -> gedeelde ruimte (cyrb53-hash; het wachtwoord zelf komt niet in de database) */
 function householdFromPass(pw){ let h1=0xdeadbeef,h2=0x41c6ce57; for(let i=0;i<pw.length;i++){ const c=pw.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); } h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909); return 'hh_'+(h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0'); }
 function savedPass(){ return localStorage.getItem('sync-pass-v1')||''; }
@@ -679,11 +691,12 @@ function applyIncoming(k,v){
 }
 function syncPush(k,val){
   if(!sb||!syncCfg||syncApplying) return;
+  lastPush[k]=JSON.stringify(val);
   sb.from('app_kv').upsert({household:syncCfg.household,k,v:val,updated_at:new Date().toISOString()}).then(function(res){ if(res&&res.error) console.warn('sync push',k,res.error.message); });
 }
 function rerender(){
   refreshHome();
-  if(!document.getElementById('shoppingView').classList.contains('hidden')) renderShopping();
+  if(!document.getElementById('shoppingView').classList.contains('hidden')) refreshShopping();
   if(!document.getElementById('recipesView').classList.contains('hidden')){ renderChips(); renderRecipes(); }
   if(!document.getElementById('syncView').classList.contains('hidden')) renderSyncInfo();
 }
@@ -699,7 +712,7 @@ async function syncConnect(cfg){
   SYNC_KEYS.forEach(function(k){ if(!remote.has(k)){ const v=localVal(k); if(!isEmptyVal(v)) sb.from('app_kv').upsert({household:cfg.household,k:k,v:v,updated_at:new Date().toISOString()}); } });
   sb.channel('kv-'+cfg.household)
     .on('postgres_changes',{event:'*',schema:'public',table:'app_kv',filter:'household=eq.'+cfg.household},function(payload){
-      const row=payload.new; if(row&&row.k&&SYNC_KEYS.indexOf(row.k)>=0){ applyIncoming(row.k,row.v); rerender(); }
+      const row=payload.new; if(row&&row.k&&SYNC_KEYS.indexOf(row.k)>=0){ if(lastPush[row.k]===JSON.stringify(row.v)) return; applyIncoming(row.k,row.v); rerender(); }
     })
     .subscribe();
   rerender();
