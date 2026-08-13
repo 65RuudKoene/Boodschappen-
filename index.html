@@ -68,6 +68,15 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .recipe li{margin:8px 0;line-height:1.35}
 .recipe{padding:0;overflow:hidden;scroll-margin-top:96px}
 .recipe .body{padding:14px}
+.recipe-head{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:0;background:transparent;padding:14px;cursor:pointer}
+.recipe-head:active{transform:scale(.99)}
+.recipe-head-thumb{flex:0 0 52px;width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;background:linear-gradient(135deg,var(--h1),var(--h2));text-shadow:0 1px 3px rgba(0,0,0,.2)}
+.recipe-head-info{flex:1;min-width:0}
+.recipe-head-title{font-size:16px;font-weight:700;line-height:1.3;display:block}
+.recipe-head-sub{font-size:13px;color:var(--muted);margin-top:2px;display:block}
+.recipe-head .chev{flex:0 0 auto;color:var(--muted);font-size:20px;transition:transform .2s ease}
+.recipe.expanded .recipe-head .chev{transform:rotate(90deg)}
+.recipe:not(.expanded) .thumb,.recipe:not(.expanded) .body{display:none}
 .thumb{position:relative;width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--h1),var(--h2));display:flex;align-items:center;justify-content:center;overflow:hidden}
 .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .thumb .ph{color:#fff;font-weight:700;font-size:17px;text-align:center;padding:0 18px;text-shadow:0 1px 4px rgba(0,0,0,.25)}
@@ -451,7 +460,7 @@ function openRecipe(id){
   if(si){ si.value=''; document.getElementById('searchClear').classList.add('hidden'); }
   renderChips(); renderRecipes();
   show('recipesView'); setHeader('recipes');
-  requestAnimationFrame(()=>{ const el=document.getElementById('recipe-'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); });
+  requestAnimationFrame(()=>{ const el=document.getElementById('recipe-'+id); if(el){ el.classList.add('expanded'); el.scrollIntoView({behavior:'smooth',block:'start'}); } });
 }
 function pickMatches(r){
   if(!pickQuery) return true;
@@ -681,6 +690,13 @@ function renderRecipes(){
   list.forEach(r=>{
     const [h1,h2]=hues(r.title);
     const card=document.createElement('article'); card.className='card recipe'; card.id='recipe-'+r.id;
+    const head=document.createElement('button'); head.className='recipe-head'; head.type='button';
+    const headThumb=document.createElement('span'); headThumb.className='recipe-head-thumb'; headThumb.style.setProperty('--h1','hsl('+h1+' 55% 55%)'); headThumb.style.setProperty('--h2','hsl('+h2+' 55% 42%)'); headThumb.textContent=r.emoji||'🍽️';
+    const headSub=(r.meal&&MEALS[r.meal]?MEALS[r.meal]:'')+(r.time?' · '+r.time:'');
+    const headInfo=document.createElement('span'); headInfo.className='recipe-head-info'; headInfo.innerHTML='<span class="recipe-head-title">'+r.title+'</span><span class="recipe-head-sub">'+headSub+'</span>';
+    const headChev=document.createElement('span'); headChev.className='chev'; headChev.textContent='›';
+    head.append(headThumb,headInfo,headChev);
+    head.onclick=()=>{ card.classList.toggle('expanded'); };
     const img=document.createElement('img'); img.loading='lazy'; img.alt=r.title; img.referrerPolicy='no-referrer'; img.src=r.image?r.image:'images/'+r.id+'.jpg'; img.onerror=function(){this.remove();};
     const thumb=document.createElement('div'); thumb.className='thumb';
     thumb.style.setProperty('--h1','hsl('+h1+' 55% 55%)');
@@ -689,9 +705,8 @@ function renderRecipes(){
     ph.innerHTML='<div class="ph-emoji">'+(r.emoji||'🍽️')+'</div>'+r.title;
     thumb.append(ph,img);
     const body=document.createElement('div'); body.className='body';
-    const mealTag=r.meal?'<span class="meal-badge">'+MEALS[r.meal]+'</span>':'';
     let cardServ=BASE_SERV;
-    body.innerHTML='<h2>'+r.title+mealTag+'</h2><div class="badge">'+r.time+' · <span class="servTxt">'+servLabel(cardServ)+'</span></div>'+
+    body.innerHTML='<div class="badge"><span class="servTxt">'+servLabel(cardServ)+'</span></div>'+
       '<div class="serv"><span class="lbl">Aantal personen</span><span class="stepper"><button class="minus" aria-label="Minder personen">−</button><span class="cnt">'+servLabel(cardServ)+'</span><button class="plus" aria-label="Meer personen">+</button></span></div>'+
       '<div class="badge serv-note">Alleen om te bekijken. Voor de boodschappenlijst stel je het aantal personen per week in.</div>'+
       '<h3>Ingrediënten</h3><ul class="ingList">'+r.ing.map(g=>'<li>'+ingText(scaleGroup(g,cardServ))+'</li>').join('')+'</ul>'+
@@ -716,7 +731,7 @@ function renderRecipes(){
     minus.disabled=cardServ<=MIN_SERV;
     minus.onclick=()=>applyServ(cardServ-1);
     plus.onclick=()=>applyServ(cardServ+1);
-    card.append(thumb,body);
+    card.append(head,thumb,body);
     root.appendChild(card);
   });
 }
@@ -729,7 +744,7 @@ function surprise(){
   const si=document.getElementById('recipeSearch');
   if(si){ si.value=''; document.getElementById('searchClear').classList.add('hidden'); }
   renderChips(); renderRecipes();
-  requestAnimationFrame(()=>{ const el=document.getElementById('recipe-'+r.id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); });
+  requestAnimationFrame(()=>{ const el=document.getElementById('recipe-'+r.id); if(el){ el.classList.add('expanded'); el.scrollIntoView({behavior:'smooth',block:'start'}); } });
 }
 
 function deleteRecipe(id){
@@ -907,7 +922,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='20';
+const APP_VERSION='21';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1'];
