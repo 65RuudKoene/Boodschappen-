@@ -845,13 +845,28 @@ async function fetchRecipe(){
   }
   try{
     const res=await sb.functions.invoke('parse-recipe',{ body:body });
-    if(res.error) throw new Error(res.error.message||'onbekende fout');
+    if(res.error) throw new Error(await extractFnErrorMessage(res.error));
     const r=res.data && res.data.recipe ? res.data.recipe : res.data;
     if(!validRecipe(r)){ throw new Error('geen recept herkend'); }
     previewRecipe=r;
     renderPreview(r);
     st.textContent='Gevonden! Controleer hieronder en voeg toe.';
   }catch(e){ st.textContent='Ophalen mislukt: '+(e&&e.message?e.message:e); }
+}
+/* De supabase-js foutmelding bij een non-2xx is een generieke wikkel; het echte bericht van de
+   Edge Function zelf staat in error.context (de ruwe Response). Die lezen we hier uit. */
+async function extractFnErrorMessage(err){
+  const fallback=(err&&err.message)||'onbekende fout';
+  try{
+    const ctx=err&&err.context;
+    if(ctx&&typeof ctx.clone==='function'){
+      const body=await ctx.clone().json().catch(function(){return null;});
+      if(body&&body.error) return body.error+' (HTTP '+ctx.status+')';
+      const txt=await ctx.clone().text().catch(function(){return '';});
+      if(txt) return txt.slice(0,200)+' (HTTP '+ctx.status+')';
+    }
+  }catch(e){}
+  return fallback;
 }
 function renderPreview(r){
   const pv=document.getElementById('addPreview');
@@ -889,7 +904,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='17';
+const APP_VERSION='18';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1'];
