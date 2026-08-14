@@ -97,6 +97,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;white-space:nowrap}
 .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.pick-round-label{font-size:13px;color:var(--muted);white-space:nowrap;align-self:center;flex:0 0 auto}
 .meal-badge{display:inline-block;font-size:11px;font-weight:700;color:var(--accent-2);background:color-mix(in srgb,var(--accent-2) 14%,transparent);border-radius:8px;padding:2px 8px;margin-left:8px;vertical-align:middle}
 .empty{color:var(--muted);text-align:center;padding:28px 16px;font-size:15px}
 .src{display:inline-block;margin-top:12px;color:var(--accent-2);font-weight:600;font-size:14px;text-decoration:none}
@@ -215,6 +216,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
       </div>
       <div class="chips" id="pickFilter"></div>
       <div class="chips hidden" id="pickDinnerTypeFilter"></div>
+      <div class="chips hidden" id="pickRoundFilter"></div>
       <div id="pickList"></div>
     </div>
   </div>
@@ -357,7 +359,7 @@ let weekServings=JSON.parse(localStorage.getItem('week-servings-v1')||'{}');
 let pantry=JSON.parse(localStorage.getItem('pantry-v1')||'[]');
 let recipeNotes=JSON.parse(localStorage.getItem('recipe-notes-v1')||'{}');
 let doneHidden=false, pickerOpen=false;
-let pickMeal='alle', pickQuery='', pickDinnerType='alle';
+let pickMeal='alle', pickQuery='', pickDinnerType='alle', pickRoundId=null;
 function persist(k,val){ localStorage.setItem(k,JSON.stringify(val)); syncPush(k,val); }
 function savePlanner(){ persist('planner-weeks-v1',plannerWeeks); }
 function saveRounds(){ persist('planner-rounds-v1',roundsAll); }
@@ -559,6 +561,21 @@ function renderPickDinnerTypeChips(){
     bar.appendChild(b);
   });
 }
+/* Alleen zichtbaar bij meer dan 1 ronde: kies naar welke ronde nieuw aangevinkte recepten gaan. */
+function renderPickRoundChips(key){
+  const bar=document.getElementById('pickRoundFilter'), rounds=weekRounds(key);
+  if(rounds.length<=1){ bar.classList.add('hidden'); bar.innerHTML=''; return; }
+  if(!pickRoundId || !rounds.some(r=>r.id===pickRoundId)){
+    const ro=openRoundOf(key);
+    pickRoundId=ro?ro.id:rounds[rounds.length-1].id;
+  }
+  bar.classList.remove('hidden');
+  bar.innerHTML='<span class="pick-round-label">Toevoegen aan:</span>'+rounds.map((r,i)=>{
+    const label='Ronde '+(i+1)+(!r.closedAt?' (actief)':'');
+    return '<button class="chip'+(r.id===pickRoundId?' active':'')+'" data-id="'+r.id+'">'+label+'</button>';
+  }).join('');
+  bar.querySelectorAll('button[data-id]').forEach(b=>{ b.onclick=()=>{ pickRoundId=b.dataset.id; renderPickRoundChips(key); }; });
+}
 function renderPickList(key){
   const el=document.getElementById('pickList'), ids=plannerWeeks[key]||[];
   const list=allRecipes().filter(r=>(pickMeal==='alle'||r.meal===pickMeal) && (pickMeal!=='diner'||pickDinnerType==='alle'||inferDinnerType(r)===pickDinnerType) && pickMatches(r));
@@ -566,12 +583,12 @@ function renderPickList(key){
   el.innerHTML=list.map(r=>'<label class="pick-item"><input type="checkbox" data-id="'+r.id+'"'+(ids.includes(r.id)?' checked':'')+'><span>'+r.emoji+' '+r.title+'</span></label>').join('');
   el.querySelectorAll('input').forEach(cb=>{ cb.onchange=()=>toggleRecipeInWeek(key,cb.dataset.id,cb.checked); });
 }
-function renderPicker(key){ renderPickChips(); renderPickList(key); }
+function renderPicker(key){ renderPickChips(); renderPickRoundChips(key); renderPickList(key); }
 function togglePicker(){
   pickerOpen=!pickerOpen;
   document.getElementById('picker').classList.toggle('hidden',!pickerOpen);
   document.getElementById('pickBtn').textContent=pickerOpen?'Klaar met kiezen':'Recepten kiezen';
-  if(pickerOpen) renderPicker(curKey());
+  if(pickerOpen){ pickRoundId=null; renderPicker(curKey()); }
 }
 function toggleRecipeInWeek(key,id,on){
   const set=new Set(plannerWeeks[key]||[]);
@@ -580,7 +597,8 @@ function toggleRecipeInWeek(key,id,on){
   if(!on) setWeekServings(key,id,BASE_SERV);
   savePlanner();
   if(on){
-    const ro=ensureOpenRound(key);
+    let ro=pickRoundId ? (roundsAll[key]||[]).find(r=>r.id===pickRoundId) : null;
+    if(!ro) ro=ensureOpenRound(key);
     if(!ro.recipeIds.includes(id)){ ro.recipeIds.push(id); saveRounds(); }
   } else {
     let changed=false;
@@ -1066,7 +1084,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='24';
+const APP_VERSION='25';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1'];
