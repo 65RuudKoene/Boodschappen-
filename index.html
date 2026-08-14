@@ -55,13 +55,17 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .pick-item input{width:22px;height:22px;accent-color:var(--accent)}
 .selchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
 .selchip{display:inline-flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 2px 2px 4px;font-size:13px}
-.round-label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 4px}
-.round-label.active{color:var(--accent)}
-.round-closed{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:9px 12px;margin:0 0 8px;font-size:13px}
-.round-closed .round-label{margin:0;flex:0 0 auto}
-.round-closed .round-summary{flex:1;min-width:120px;color:var(--text)}
-.round-closed .round-stat{flex:0 0 auto;color:var(--accent);font-weight:700;font-size:12px;white-space:nowrap}
 .linkbtn.newround{color:var(--accent)}
+.round-section{margin:10px 0}
+.round-head{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;cursor:pointer;background:var(--card);border-radius:16px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.round-head-info{flex:1;min-width:0}
+.round-head-title{font-size:16px;font-weight:700;display:block}
+.round-head-sub{font-size:13px;color:var(--muted);margin-top:2px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.round-head .chev{flex:0 0 auto;color:var(--muted);font-size:20px;transition:transform .2s ease}
+.round-section.expanded .round-head .chev{transform:rotate(90deg)}
+.round-body{display:none}
+.round-section.expanded .round-body{display:block}
+.round-body .card{margin-top:10px}
 .sc-open{background:transparent;color:var(--accent-2);font-weight:600;font-size:13px;padding:5px 4px 5px 6px}
 .sc-x{background:transparent;color:var(--muted);font-size:14px;padding:5px 8px;border-radius:999px}
 .additem{display:flex;gap:8px;margin:2px 0 10px}
@@ -480,17 +484,17 @@ function ensureOpenRound(key){
   if(changed) saveRounds();
   return ro;
 }
+let toggledRounds=new Set(); /* sessie-only: welke rondes handmatig omgeklapt zijn t.o.v. hun standaardstand */
+function isRoundExpanded(round){
+  const def=!round.closedAt; /* open ronde standaard uitgeklapt, gesloten standaard dicht */
+  return toggledRounds.has(round.id) ? !def : def;
+}
+function toggleRoundExpanded(round){ if(toggledRounds.has(round.id)) toggledRounds.delete(round.id); else toggledRounds.add(round.id); }
+
 function startNewRound(key){
   const ro=ensureOpenRound(key);
   if(!ro.recipeIds.length) return;
-  const cats=buildShopping(key,ro.recipeIds);
-  let total=0, checked=0;
-  Object.values(cats).forEach(items=>items.forEach(it=>{
-    total++;
-    const k=it.c+'|'+it.n+'|'+it.u;
-    if((checksAll[key]||{})[k]) checked++;
-  }));
-  ro.closedAt=Date.now(); ro.checkedCount=checked; ro.totalCount=total;
+  ro.closedAt=Date.now();
   roundsAll[key].push({ id:genRoundId(), recipeIds:[], startedAt:Date.now(), closedAt:null });
   saveRounds();
   renderShopping();
@@ -510,20 +514,7 @@ function renderSel(key){
     return;
   }
   const ro=ensureOpenRound(key);
-  const rounds=weekRounds(key);
-  let html='';
-  rounds.forEach((r,idx)=>{
-    const recs=r.recipeIds.map(id=>recipeById[id]).filter(Boolean);
-    if(r.closedAt){
-      if(!recs.length) return;
-      const names=recs.map(x=>x.emoji+' '+x.title).join(', ');
-      html+='<div class="round-closed"><span class="round-label">Ronde '+(idx+1)+'</span><span class="round-summary">'+esc(names)+'</span><span class="round-stat">'+(r.checkedCount||0)+'/'+(r.totalCount||0)+' gehaald</span></div>';
-    } else {
-      if(rounds.length>1) html+='<div class="round-label active">Ronde '+(idx+1)+' (actief)</div>';
-      html+='<div class="selchips">'+r.recipeIds.map(id=>chipHtml(id,key)).join('')+'</div>';
-    }
-  });
-  el.innerHTML=html||'<div class="badge">Nog geen recepten gekozen voor deze week.</div>';
+  el.innerHTML='<div class="selchips">'+ids.map(id=>chipHtml(id,key)).join('')+'</div>';
   el.querySelectorAll('.sc-open').forEach(b=>{ b.onclick=()=>openRecipe(b.dataset.id); });
   el.querySelectorAll('.sc-x').forEach(b=>{ b.onclick=()=>toggleRecipeInWeek(key,b.dataset.id,false); });
   const bump=(id,d)=>{ setWeekServings(key,id,getWeekServings(key,id)+d); renderSel(key); renderShopWrap(key); };
@@ -605,10 +596,10 @@ function initPickSearch(){
 }
 
 function renderShopWrap(key){
+  ensureOpenRound(key);
   const wrap=document.getElementById('shopWrap'); wrap.innerHTML='';
   const ids=plannerWeeks[key]||[];
   const manual=manualAll[key]||[];
-  const checks=checksAll[key]||(checksAll[key]={});
   let seq=0;
 
   if(ids.length || manual.length){
@@ -621,11 +612,17 @@ function renderShopWrap(key){
 
   function addRow(card, labelText, skey, opts){
     opts=opts||{};
+    const checks=checksAll[key]||(checksAll[key]={});
     const cid='ck'+(seq++);
     const row=document.createElement('div'); row.className='item'+(checks[skey]?' done':'');
     if(doneHidden && checks[skey]) row.style.display='none';
     const cb=document.createElement('input'); cb.type='checkbox'; cb.id=cid; cb.checked=!!checks[skey];
-    cb.onchange=()=>{ checks[skey]=cb.checked; saveChecks(); row.classList.toggle('done',cb.checked); if(doneHidden&&cb.checked) row.style.display='none'; };
+    cb.onchange=()=>{
+      checks[skey]=cb.checked; saveChecks();
+      row.classList.toggle('done',cb.checked);
+      if(doneHidden&&cb.checked) row.style.display='none';
+      if(opts.onToggle) opts.onToggle();
+    };
     const lab=document.createElement('label'); lab.className='lab'; lab.htmlFor=cid; lab.textContent=labelText;
     row.append(cb,lab);
     if(opts.pantryName){ const hv=document.createElement('button'); hv.className='have'; hv.textContent='🏠'; hv.title='Heb ik al in huis'; hv.setAttribute('aria-label','Heb ik al in huis'); hv.onclick=()=>{ addToPantry(opts.pantryName); renderShopWrap(key); }; row.append(hv); }
@@ -633,17 +630,55 @@ function renderShopWrap(key){
     card.appendChild(row);
   }
 
-  const cats = ids.length ? buildShopping(key,ids) : {};
+  /* Per ronde een eigen, in-/uitklapbare boodschappenlijst. */
+  const roundsWithRecipes=weekRounds(key).filter(r=>r.recipeIds.length);
+  roundsWithRecipes.forEach((round,idx)=>{
+    const recs=round.recipeIds.map(id=>recipeById[id]).filter(Boolean);
+    const cats=buildShopping(key,round.recipeIds);
+    if(!Object.values(cats).some(items=>items.length)) return;
+
+    const section=document.createElement('div'); section.className='round-section'+(isRoundExpanded(round)?' expanded':'');
+    const head=document.createElement('button'); head.className='round-head'; head.type='button';
+    const info=document.createElement('span'); info.className='round-head-info';
+    const title=document.createElement('span'); title.className='round-head-title'; title.textContent='Ronde '+(idx+1)+(round.closedAt?'':' · actief');
+    const sub=document.createElement('span'); sub.className='round-head-sub';
+    info.append(title,sub);
+    const chev=document.createElement('span'); chev.className='chev'; chev.textContent='›';
+    head.append(info,chev);
+    head.onclick=()=>{ toggleRoundExpanded(round); section.classList.toggle('expanded'); };
+    const body=document.createElement('div'); body.className='round-body';
+
+    function refreshStat(){
+      let total=0, checked=0;
+      Object.values(cats).forEach(items=>items.forEach(it=>{
+        total++;
+        if((checksAll[key]||{})[round.id+'|'+it.c+'|'+it.n+'|'+it.u]) checked++;
+      }));
+      sub.textContent=recs.map(r=>r.emoji+' '+r.title).join(', ')+' · '+checked+'/'+total+' gehaald';
+    }
+    refreshStat();
+
+    CATS.forEach(([ckey,label])=>{
+      const items=cats[ckey]; if(!items||!items.length) return;
+      const card=document.createElement('div'); card.className='card';
+      const h=document.createElement('h2'); h.textContent=label; card.appendChild(h);
+      items.forEach(it=>addRow(card, shopText(it), round.id+'|'+it.c+'|'+it.n+'|'+it.u, {pantryName:it.n, onToggle:refreshStat}));
+      body.appendChild(card);
+    });
+
+    section.append(head,body);
+    wrap.appendChild(section);
+  });
+
   const manByCat={}, manOther=[];
   manual.forEach(m=>{ if(m.c && CATS.some(c=>c[0]===m.c)) (manByCat[m.c]=manByCat[m.c]||[]).push(m); else manOther.push(m); });
   const delMan=(m)=>()=>{ manualAll[key]=(manualAll[key]||[]).filter(x=>x.id!==m.id); if(!manualAll[key].length) delete manualAll[key]; saveManual(); renderShopWrap(key); };
 
   CATS.forEach(([ckey,label])=>{
-    const recItems=cats[ckey]||[], manItems=manByCat[ckey]||[];
-    if(!recItems.length && !manItems.length) return;
+    const manItems=manByCat[ckey]||[];
+    if(!manItems.length) return;
     const card=document.createElement('div'); card.className='card';
     const h=document.createElement('h2'); h.textContent=label; card.appendChild(h);
-    recItems.forEach(it=>addRow(card, shopText(it), it.c+'|'+it.n+'|'+it.u, {pantryName:it.n}));
     manItems.forEach(m=>addRow(card, m.t, 'm|'+m.id, {delFn:delMan(m)}));
     wrap.appendChild(card);
   });
@@ -684,20 +719,36 @@ function resetChecks(){
 /* ---------- DELEN ---------- */
 function buildShareText(key){
   const yw=isoWeek(viewDate);
-  const ids=plannerWeeks[key]||[], manual=manualAll[key]||[], checks=checksAll[key]||{};
-  const cats = ids.length ? buildShopping(key,ids) : {};
-  const manByCat={}, manOther=[];
-  manual.forEach(m=>{ if(m.c && CATS.some(c=>c[0]===m.c)) (manByCat[m.c]=manByCat[m.c]||[]).push(m); else manOther.push(m); });
+  const manual=manualAll[key]||[], checks=checksAll[key]||{};
   const out=[]; const line=(sk,txt)=>out.push((checks[sk]?'✓ ':'• ')+txt);
-  CATS.forEach(([ckey,label])=>{
-    const recItems=cats[ckey]||[], manItems=manByCat[ckey]||[];
-    if(!recItems.length && !manItems.length) return;
-    out.push(label);
-    recItems.forEach(it=>line(it.c+'|'+it.n+'|'+it.u, shopText(it)));
-    manItems.forEach(m=>line('m|'+m.id, m.t));
+
+  const rounds=weekRounds(key).filter(r=>r.recipeIds.length);
+  rounds.forEach((round,idx)=>{
+    const recs=round.recipeIds.map(id=>recipeById[id]).filter(Boolean);
+    const cats=buildShopping(key,round.recipeIds);
+    if(!Object.values(cats).some(items=>items.length)) return;
+    out.push('RONDE '+(idx+1)+(round.closedAt?'':' (actief)')+' — '+recs.map(r=>r.title).join(', '));
+    CATS.forEach(([ckey,label])=>{
+      const items=cats[ckey]; if(!items||!items.length) return;
+      out.push(label);
+      items.forEach(it=>line(round.id+'|'+it.c+'|'+it.n+'|'+it.u, shopText(it)));
+    });
     out.push('');
   });
-  if(manOther.length){ out.push('Zelf toegevoegd'); manOther.forEach(m=>line('m|'+m.id, m.t)); out.push(''); }
+
+  const manByCat={}, manOther=[];
+  manual.forEach(m=>{ if(m.c && CATS.some(c=>c[0]===m.c)) (manByCat[m.c]=manByCat[m.c]||[]).push(m); else manOther.push(m); });
+  if(manual.length){
+    out.push('ZELF TOEGEVOEGD');
+    CATS.forEach(([ckey,label])=>{
+      const items=manByCat[ckey]; if(!items||!items.length) return;
+      out.push(label);
+      items.forEach(m=>line('m|'+m.id, m.t));
+    });
+    manOther.forEach(m=>line('m|'+m.id, m.t));
+    out.push('');
+  }
+
   const body=out.join('\n').trim();
   return body ? '🛒 Boodschappen – Week '+yw.week+' · '+yw.year+'\n\n'+body : '';
 }
@@ -1015,7 +1066,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='22';
+const APP_VERSION='23';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1'];
