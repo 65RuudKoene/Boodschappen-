@@ -520,7 +520,7 @@ function renderSel(key){
   const bump=(id,d)=>{ setWeekServings(key,id,getWeekServings(key,id)+d); renderSel(key); renderShopWrap(key); };
   el.querySelectorAll('.s-minus').forEach(b=>{ b.disabled=getWeekServings(key,b.dataset.id)<=MIN_SERV; b.onclick=()=>bump(b.dataset.id,-1); });
   el.querySelectorAll('.s-plus').forEach(b=>{ b.onclick=()=>bump(b.dataset.id,1); });
-  if(nrBtn) nrBtn.classList.toggle('hidden', !(ro&&ro.recipeIds.length));
+  if(nrBtn) nrBtn.classList.toggle('hidden', !ids.length);
 }
 function openRecipe(id){
   mealFilter='alle'; searchQuery=''; dinnerType='alle';
@@ -1066,7 +1066,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='23';
+const APP_VERSION='24';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1'];
