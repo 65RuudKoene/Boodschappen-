@@ -55,6 +55,13 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .pick-item input{width:22px;height:22px;accent-color:var(--accent)}
 .selchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
 .selchip{display:inline-flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 2px 2px 4px;font-size:13px}
+.round-label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 4px}
+.round-label.active{color:var(--accent)}
+.round-closed{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:9px 12px;margin:0 0 8px;font-size:13px}
+.round-closed .round-label{margin:0;flex:0 0 auto}
+.round-closed .round-summary{flex:1;min-width:120px;color:var(--text)}
+.round-closed .round-stat{flex:0 0 auto;color:var(--accent);font-weight:700;font-size:12px;white-space:nowrap}
+.linkbtn.newround{color:var(--accent)}
 .sc-open{background:transparent;color:var(--accent-2);font-weight:600;font-size:13px;padding:5px 4px 5px 6px}
 .sc-x{background:transparent;color:var(--muted);font-size:14px;padding:5px 8px;border-radius:999px}
 .additem{display:flex;gap:8px;margin:2px 0 10px}
@@ -194,6 +201,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
   </div>
   <div class="card">
     <div id="selRecipes"></div>
+    <button class="linkbtn newround hidden" id="newRoundBtn" onclick="startNewRound(curKey())">↻ Nieuwe ronde starten</button>
     <button class="linkbtn copyweek hidden" id="copyWeekBtn" onclick="copyPrevWeek()"></button>
     <button class="linkbtn" id="pickBtn" onclick="togglePicker()">Recepten kiezen</button>
     <div id="picker" class="picker hidden">
@@ -337,6 +345,8 @@ function shiftWeek(d,n){ const x=new Date(d); x.setDate(x.getDate()+n*7); return
 let plannerWeeks=JSON.parse(localStorage.getItem('planner-weeks-v1')||'{}');
 let checksAll=JSON.parse(localStorage.getItem('boodschappen-checks-v3')||'{}');
 let manualAll=JSON.parse(localStorage.getItem('planner-manual-v1')||'{}');
+/* Rondes: groeperen welke recepten in dezelfde boodschappenronde zijn gekozen, binnen een week. */
+let roundsAll=JSON.parse(localStorage.getItem('planner-rounds-v1')||'{}');
 /* Basisrecepten die de gebruiker heeft verwijderd; voorkomt dat ze terugkomen bij het samenvoegen. */
 let deletedSeedIds=JSON.parse(localStorage.getItem('hidden-recipes-v1')||'[]');
 let weekServings=JSON.parse(localStorage.getItem('week-servings-v1')||'{}');
@@ -346,6 +356,7 @@ let doneHidden=false, pickerOpen=false;
 let pickMeal='alle', pickQuery='', pickDinnerType='alle';
 function persist(k,val){ localStorage.setItem(k,JSON.stringify(val)); syncPush(k,val); }
 function savePlanner(){ persist('planner-weeks-v1',plannerWeeks); }
+function saveRounds(){ persist('planner-rounds-v1',roundsAll); }
 function saveChecks(){ persist('boodschappen-checks-v3',checksAll); }
 function saveManual(){ persist('planner-manual-v1',manualAll); }
 function saveDeletedSeeds(){ persist('hidden-recipes-v1',deletedSeedIds); }
@@ -444,15 +455,81 @@ function refreshShopping(){
 }
 function navWeek(dir){ viewDate=shiftWeek(viewDate,dir); renderShopping(); }
 
+/* ---------- RONDES ---------- */
+function genRoundId(){ return 'rnd'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+function weekRounds(key){ return roundsAll[key]||[]; }
+function openRoundOf(key){
+  const rounds=roundsAll[key];
+  if(!rounds||!rounds.length) return null;
+  const last=rounds[rounds.length-1];
+  return last.closedAt ? null : last;
+}
+/* Zorgt dat er altijd een open ronde is zodra er recepten gekozen zijn — vangt ook recepten op
+   die al gekozen waren voordat rondes bestonden (die worden dan gewoon Ronde 1). */
+function ensureOpenRound(key){
+  if(!roundsAll[key]) roundsAll[key]=[];
+  let changed=false;
+  let ro=openRoundOf(key);
+  if(!ro){
+    ro={ id:genRoundId(), recipeIds:[], startedAt:Date.now(), closedAt:null };
+    roundsAll[key].push(ro);
+    changed=true;
+  }
+  const known=new Set(); roundsAll[key].forEach(r=>r.recipeIds.forEach(id=>known.add(id)));
+  (plannerWeeks[key]||[]).forEach(id=>{ if(!known.has(id)){ ro.recipeIds.push(id); changed=true; } });
+  if(changed) saveRounds();
+  return ro;
+}
+function startNewRound(key){
+  const ro=ensureOpenRound(key);
+  if(!ro.recipeIds.length) return;
+  const cats=buildShopping(key,ro.recipeIds);
+  let total=0, checked=0;
+  Object.values(cats).forEach(items=>items.forEach(it=>{
+    total++;
+    const k=it.c+'|'+it.n+'|'+it.u;
+    if((checksAll[key]||{})[k]) checked++;
+  }));
+  ro.closedAt=Date.now(); ro.checkedCount=checked; ro.totalCount=total;
+  roundsAll[key].push({ id:genRoundId(), recipeIds:[], startedAt:Date.now(), closedAt:null });
+  saveRounds();
+  renderShopping();
+}
+
+function chipHtml(id,key){
+  const r=recipeById[id]; if(!r) return '';
+  const s=getWeekServings(key,id);
+  return '<span class="selchip"><button class="sc-open" data-id="'+id+'">'+r.emoji+' '+r.title+'</button><span class="mini"><button class="s-minus" data-id="'+id+'" aria-label="Minder personen">−</button><span class="n">'+s+'p</span><button class="s-plus" data-id="'+id+'" aria-label="Meer personen">+</button></span><button class="sc-x" data-id="'+id+'" aria-label="Uit de week halen">✕</button></span>';
+}
 function renderSel(key){
   const el=document.getElementById('selRecipes'), ids=plannerWeeks[key]||[];
-  if(!ids.length){ el.innerHTML='<div class="badge">Nog geen recepten gekozen voor deze week.</div>'; return; }
-  el.innerHTML='<div class="selchips">'+ids.map(id=>{const r=recipeById[id];if(!r)return '';const s=getWeekServings(key,id);return '<span class="selchip"><button class="sc-open" data-id="'+id+'">'+r.emoji+' '+r.title+'</button><span class="mini"><button class="s-minus" data-id="'+id+'" aria-label="Minder personen">−</button><span class="n">'+s+'p</span><button class="s-plus" data-id="'+id+'" aria-label="Meer personen">+</button></span><button class="sc-x" data-id="'+id+'" aria-label="Uit de week halen">✕</button></span>';}).join('')+'</div>';
+  const nrBtn=document.getElementById('newRoundBtn');
+  if(!ids.length){
+    el.innerHTML='<div class="badge">Nog geen recepten gekozen voor deze week.</div>';
+    if(nrBtn) nrBtn.classList.add('hidden');
+    return;
+  }
+  const ro=ensureOpenRound(key);
+  const rounds=weekRounds(key);
+  let html='';
+  rounds.forEach((r,idx)=>{
+    const recs=r.recipeIds.map(id=>recipeById[id]).filter(Boolean);
+    if(r.closedAt){
+      if(!recs.length) return;
+      const names=recs.map(x=>x.emoji+' '+x.title).join(', ');
+      html+='<div class="round-closed"><span class="round-label">Ronde '+(idx+1)+'</span><span class="round-summary">'+esc(names)+'</span><span class="round-stat">'+(r.checkedCount||0)+'/'+(r.totalCount||0)+' gehaald</span></div>';
+    } else {
+      if(rounds.length>1) html+='<div class="round-label active">Ronde '+(idx+1)+' (actief)</div>';
+      html+='<div class="selchips">'+r.recipeIds.map(id=>chipHtml(id,key)).join('')+'</div>';
+    }
+  });
+  el.innerHTML=html||'<div class="badge">Nog geen recepten gekozen voor deze week.</div>';
   el.querySelectorAll('.sc-open').forEach(b=>{ b.onclick=()=>openRecipe(b.dataset.id); });
   el.querySelectorAll('.sc-x').forEach(b=>{ b.onclick=()=>toggleRecipeInWeek(key,b.dataset.id,false); });
   const bump=(id,d)=>{ setWeekServings(key,id,getWeekServings(key,id)+d); renderSel(key); renderShopWrap(key); };
   el.querySelectorAll('.s-minus').forEach(b=>{ b.disabled=getWeekServings(key,b.dataset.id)<=MIN_SERV; b.onclick=()=>bump(b.dataset.id,-1); });
   el.querySelectorAll('.s-plus').forEach(b=>{ b.onclick=()=>bump(b.dataset.id,1); });
+  if(nrBtn) nrBtn.classList.toggle('hidden', !(ro&&ro.recipeIds.length));
 }
 function openRecipe(id){
   mealFilter='alle'; searchQuery=''; dinnerType='alle';
@@ -510,7 +587,16 @@ function toggleRecipeInWeek(key,id,on){
   if(on) set.add(id); else set.delete(id);
   if(set.size) plannerWeeks[key]=[...set]; else delete plannerWeeks[key];
   if(!on) setWeekServings(key,id,BASE_SERV);
-  savePlanner(); renderSel(key); renderPickList(key); renderShopWrap(key);
+  savePlanner();
+  if(on){
+    const ro=ensureOpenRound(key);
+    if(!ro.recipeIds.includes(id)){ ro.recipeIds.push(id); saveRounds(); }
+  } else {
+    let changed=false;
+    (roundsAll[key]||[]).forEach(r=>{ const i=r.recipeIds.indexOf(id); if(i>=0){ r.recipeIds.splice(i,1); changed=true; } });
+    if(changed) saveRounds();
+  }
+  renderSel(key); renderPickList(key); renderShopWrap(key);
 }
 function initPickSearch(){
   const si=document.getElementById('pickSearch'), sc=document.getElementById('pickSearchClear');
@@ -631,7 +717,9 @@ function copyPrevWeek(){
   const set=new Set(plannerWeeks[key]||[]);
   src.forEach(id=>{ if(recipeById[id]){ set.add(id); const sv=getWeekServings(pk,id); if(sv!==BASE_SERV) setWeekServings(key,id,sv); } });
   if(set.size) plannerWeeks[key]=[...set];
-  savePlanner(); renderShopping();
+  savePlanner();
+  ensureOpenRound(key);
+  renderShopping();
 }
 
 /* ---------- RECIPES VIEW ---------- */
@@ -758,6 +846,11 @@ function deleteRecipe(id){
     if(!plannerWeeks[k].length) delete plannerWeeks[k];
   });
   savePlanner();
+  let roundsChanged=false;
+  Object.keys(roundsAll).forEach(k=>{
+    (roundsAll[k]||[]).forEach(r=>{ const i=r.recipeIds.indexOf(id); if(i>=0){ r.recipeIds.splice(i,1); roundsChanged=true; } });
+  });
+  if(roundsChanged) saveRounds();
   renderChips(); renderRecipes(); refreshHome();
 }
 
@@ -922,10 +1015,10 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='21';
+const APP_VERSION='22';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
-const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1'];
+const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1'];
 let sb=null, syncCfg=null, syncApplying=false, lastPush={};
 /* wachtwoord -> gedeelde ruimte (cyrb53-hash; het wachtwoord zelf komt niet in de database) */
 function householdFromPass(pw){ let h1=0xdeadbeef,h2=0x41c6ce57; for(let i=0;i<pw.length;i++){ const c=pw.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); } h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909); return 'hh_'+(h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0'); }
@@ -943,6 +1036,7 @@ function applyIncoming(k,v){
   else if(k==='pantry-v1') pantry=v||[];
   else if(k==='recipe-notes-v1') recipeNotes=v||{};
   else if(k==='custom-recipes-v1'){ customRecipes=v||[]; rebuildIndex(); }
+  else if(k==='planner-rounds-v1') roundsAll=v||{};
   localStorage.setItem(k,JSON.stringify(v));
   syncApplying=false;
 }
@@ -997,7 +1091,7 @@ function doLogout(){
   try{ if(sb) sb.removeAllChannels(); }catch(e){}
   sb=null; syncCfg=null;
   localStorage.removeItem('sync-pass-v1');
-  plannerWeeks={}; checksAll={}; manualAll={}; deletedSeedIds=[]; weekServings={}; pantry=[]; recipeNotes={}; customRecipes=[];
+  plannerWeeks={}; checksAll={}; manualAll={}; deletedSeedIds=[]; weekServings={}; pantry=[]; recipeNotes={}; customRecipes=[]; roundsAll={};
   SYNC_KEYS.forEach(function(k){ localStorage.removeItem(k); });
   mergeSeedRecipes(); rebuildIndex();
   goHome(); showLogin();
