@@ -471,10 +471,19 @@ function openRoundOf(key){
   return last.closedAt ? null : last;
 }
 /* Zorgt dat er altijd een open ronde is zodra er recepten gekozen zijn — vangt ook recepten op
-   die al gekozen waren voordat rondes bestonden (die worden dan gewoon Ronde 1). */
+   die al gekozen waren voordat rondes bestonden (die worden dan gewoon Ronde 1).
+   Ruimt ook 'verweesde' recept-ids op: recepten die (bv. door een sync tussen twee toestellen)
+   niet meer in plannerWeeks staan, maar nog wel in een ronde — anders blijven daar boodschappen
+   van staan terwijl de week leeg lijkt. */
 function ensureOpenRound(key){
   if(!roundsAll[key]) roundsAll[key]=[];
   let changed=false;
+  const wanted=new Set(plannerWeeks[key]||[]);
+  roundsAll[key].forEach(r=>{
+    const before=r.recipeIds.length;
+    r.recipeIds=r.recipeIds.filter(id=>wanted.has(id));
+    if(r.recipeIds.length!==before) changed=true;
+  });
   let ro=openRoundOf(key);
   if(!ro){
     ro={ id:genRoundId(), recipeIds:[], startedAt:Date.now(), closedAt:null };
@@ -482,7 +491,7 @@ function ensureOpenRound(key){
     changed=true;
   }
   const known=new Set(); roundsAll[key].forEach(r=>r.recipeIds.forEach(id=>known.add(id)));
-  (plannerWeeks[key]||[]).forEach(id=>{ if(!known.has(id)){ ro.recipeIds.push(id); changed=true; } });
+  wanted.forEach(id=>{ if(!known.has(id)){ ro.recipeIds.push(id); changed=true; } });
   if(changed) saveRounds();
   return ro;
 }
@@ -1084,7 +1093,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='25';
+const APP_VERSION='26';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1'];
