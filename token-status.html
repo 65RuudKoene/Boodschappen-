@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Token status</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#f5f5f7">
+<style>
+:root { color-scheme: light dark; --bg:#f5f5f7; --card:#fff; --text:#111; --muted:#666; --line:#ddd; --accent:#34c759; --accent-2:#0a84ff; --warn:#ff9500; --danger:#ff3b30; }
+@media (prefers-color-scheme: dark) { :root{--bg:#111;--card:#1c1c1e;--text:#f5f5f7;--muted:#aaa;--line:#333;} }
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);padding-bottom:calc(32px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;background:var(--bg);padding:16px 16px 10px;z-index:3;display:flex;align-items:center;gap:10px}
+.back{background:none;border:none;color:var(--accent-2);font-size:16px;padding:6px 4px 6px 0;cursor:pointer}
+header h1{font-size:22px;margin:0}
+header .sub{font-size:13px;color:var(--muted);margin-top:1px}
+main{padding:0 16px;max-width:640px;margin:0 auto}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card h2{font-size:16px;margin:0 0 10px}
+.card p.hint{font-size:13px;color:var(--muted);margin:4px 0 0;line-height:1.5}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+label:first-child{margin-top:0}
+input,select,textarea{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px;font-family:inherit}
+.row{display:flex;gap:10px}
+.row > *{flex:1;min-width:0}
+button.primary{width:100%;margin-top:14px;background:var(--accent-2);color:#fff;border:none;border-radius:12px;padding:12px;font-size:15px;font-weight:600;cursor:pointer}
+button.primary:active{opacity:.8}
+button.ghost{background:none;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px 12px;font-size:13px;cursor:pointer}
+.costpreview{font-size:13px;color:var(--muted);margin-top:8px;text-align:right}
+.costpreview b{color:var(--text);font-size:15px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--bg);border-radius:12px;padding:10px 12px}
+.stat .lbl{font-size:12px;color:var(--muted)}
+.stat .val{font-size:19px;font-weight:700;margin-top:2px}
+.stat .sub{font-size:11px;color:var(--muted);margin-top:1px}
+.bar-outer{background:var(--bg);border-radius:999px;height:8px;overflow:hidden;margin-top:6px}
+.bar-inner{height:100%;background:var(--accent-2);border-radius:999px;transition:width .2s}
+.bar-inner.over{background:var(--danger)}
+.chart{display:flex;align-items:flex-end;gap:4px;height:90px;margin-top:10px}
+.chart .col{flex:1;display:flex;flex-direction:column-reverse;border-radius:4px;overflow:hidden;min-height:2px;background:var(--bg)}
+.chart .seg{width:100%}
+.chart-labels{display:flex;gap:4px;margin-top:4px}
+.chart-labels span{flex:1;text-align:center;font-size:9px;color:var(--muted)}
+.legend{display:flex;gap:14px;margin-top:10px;font-size:12px;color:var(--muted)}
+.legend .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.entry{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.entry:first-child{border-top:none}
+.entry .meta{flex:1;min-width:0}
+.entry .p1{font-size:14px;font-weight:600}
+.entry .p2{font-size:12px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .cost{font-size:14px;font-weight:600;white-space:nowrap}
+.entry .del{background:none;border:none;color:var(--danger);font-size:19px;padding:2px 4px;cursor:pointer;line-height:1}
+.empty{font-size:13px;color:var(--muted);text-align:center;padding:14px 0}
+.badge{display:inline-block;background:var(--bg);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.5}
+details summary{cursor:pointer;font-size:14px;color:var(--accent-2);list-style:none}
+details summary::-webkit-details-marker{display:none}
+details[open] summary{margin-bottom:10px}
+.pricegrid{display:grid;grid-template-columns:1fr 70px 70px;gap:6px;align-items:center;font-size:12px;margin-top:8px}
+.pricegrid .h{color:var(--muted)}
+.actions-row{display:flex;gap:10px;margin-top:4px}
+.actions-row button{flex:1}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back" href="index.html">‹ Boodschappen</a>
+  <div style="flex:1">
+    <h1>Token status</h1>
+    <div class="sub">Alleen op dit toestel — geen koppeling met Anthropic</div>
+  </div>
+</header>
+
+<main>
+
+<div class="card">
+  <p class="hint">Deze pagina stuurt niets naar internet. Log hier zelf de tokens die je (of de app) bij Claude gebruikt — bijvoorbeeld het aantal uit de Anthropic Console — en zie meteen de geschatte kosten per project. Alles blijft lokaal in deze browser.</p>
+</div>
+
+<div class="card">
+  <h2>Nieuwe post</h2>
+  <label for="fDate">Datum</label>
+  <input type="date" id="fDate">
+
+  <label for="fProject">Project</label>
+  <select id="fProject">
+    <option value="boodschappen">🛒 Boodschappen-app</option>
+    <option value="kennisbank">📚 Kennisbank</option>
+    <option value="overig">✨ Overig</option>
+  </select>
+
+  <label for="fModel">Model</label>
+  <select id="fModel"></select>
+
+  <div class="row">
+    <div>
+      <label for="fIn">Input tokens</label>
+      <input type="number" id="fIn" min="0" step="1" inputmode="numeric" placeholder="0">
+    </div>
+    <div>
+      <label for="fOut">Output tokens</label>
+      <input type="number" id="fOut" min="0" step="1" inputmode="numeric" placeholder="0">
+    </div>
+  </div>
+
+  <label for="fNote">Notitie (optioneel)</label>
+  <input type="text" id="fNote" placeholder="bv. recept import, 3 foto's">
+
+  <div class="costpreview">Geschatte kosten: <b id="costPreview">$0,0000</b></div>
+  <button class="primary" id="addBtn">Toevoegen</button>
+
+  <details style="margin-top:14px">
+    <summary>Prijzen per miljoen tokens bewerken</summary>
+    <div class="pricegrid" id="priceGrid"></div>
+    <p class="hint">Standaardprijzen zijn de officiële lijstprijzen (USD) van Anthropic op 15-08-2026. Pas ze aan als Anthropic de prijzen wijzigt.</p>
+  </details>
+</div>
+
+<div class="card">
+  <h2>Deze maand</h2>
+  <div class="stat-grid" id="monthStats"></div>
+
+  <label for="fBudget" style="margin-top:14px">Maandbudget (USD, optioneel)</label>
+  <input type="number" id="fBudget" min="0" step="0.5" placeholder="bv. 20">
+  <div class="bar-outer"><div class="bar-inner" id="budgetBar"></div></div>
+  <div class="hint" id="budgetText" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+</div>
+
+<div class="card">
+  <h2>Laatste 14 dagen</h2>
+  <div class="chart" id="chart"></div>
+  <div class="chart-labels" id="chartLabels"></div>
+  <div class="legend">
+    <span><span class="dot" style="background:#34c759"></span>Boodschappen</span>
+    <span><span class="dot" style="background:#0a84ff"></span>Kennisbank</span>
+    <span><span class="dot" style="background:#ff9500"></span>Overig</span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>In totaal</h2>
+  <div class="stat-grid" id="totalStats"></div>
+</div>
+
+<div class="card">
+  <h2>Geschiedenis</h2>
+  <div id="history"></div>
+</div>
+
+<div class="card">
+  <h2>Gegevens</h2>
+  <div class="actions-row">
+    <button class="ghost" id="exportBtn">Exporteren (.json)</button>
+    <button class="ghost" id="importBtn">Importeren</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json" style="display:none">
+  <div class="actions-row">
+    <button class="ghost" id="resetBtn" style="color:var(--danger)">Alles wissen</button>
+  </div>
+</div>
+
+</main>
+
+<script>
+(function(){
+"use strict";
+
+var LS_ENTRIES = 'tokenStatus.entries.v1';
+var LS_PRICES = 'tokenStatus.prices.v1';
+var LS_BUDGET = 'tokenStatus.budget.v1';
+
+var DEFAULT_MODELS = [
+  { id:'claude-haiku-4-5-20251001', label:'Claude Haiku 4.5 (recept-import)', inPrice:1.00, outPrice:5.00 },
+  { id:'claude-sonnet-5',            label:'Claude Sonnet 5',                  inPrice:3.00, outPrice:15.00 },
+  { id:'claude-sonnet-4-6',          label:'Claude Sonnet 4.6',                inPrice:3.00, outPrice:15.00 },
+  { id:'claude-opus-5',              label:'Claude Opus 5',                    inPrice:5.00, outPrice:25.00 },
+  { id:'claude-opus-4-8',            label:'Claude Opus 4.8',                  inPrice:5.00, outPrice:25.00 },
+  { id:'custom',                     label:'Anders (prijs hieronder aanpassen)', inPrice:0,   outPrice:0 }
+];
+
+var PROJECT_LABELS = { boodschappen:'🛒 Boodschappen-app', kennisbank:'📚 Kennisbank', overig:'✨ Overig' };
+var PROJECT_COLORS = { boodschappen:'#34c759', kennisbank:'#0a84ff', overig:'#ff9500' };
+
+function loadJSON(key, fallback){
+  try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e){ return fallback; }
+}
+function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+var entries = loadJSON(LS_ENTRIES, []);
+var prices = loadJSON(LS_PRICES, {});
+DEFAULT_MODELS.forEach(function(m){ if(!(m.id in prices)) prices[m.id] = { inPrice:m.inPrice, outPrice:m.outPrice }; });
+var budget = loadJSON(LS_BUDGET, null);
+
+function fmtUSD(n){
+  return '$' + n.toLocaleString('nl-NL', { minimumFractionDigits:4, maximumFractionDigits:4 });
+}
+function fmtUSD2(n){
+  var digits = (n > 0 && n < 0.01) ? 4 : 2;
+  return '$' + n.toLocaleString('nl-NL', { minimumFractionDigits:digits, maximumFractionDigits:digits });
+}
+function fmtTok(n){
+  return n.toLocaleString('nl-NL');
+}
+function todayStr(){
+  var d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function monthKey(dateStr){ return dateStr.slice(0,7); }
+function costFor(modelId, inTok, outTok){
+  var p = prices[modelId] || { inPrice:0, outPrice:0 };
+  return (inTok/1e6)*p.inPrice + (outTok/1e6)*p.outPrice;
+}
+
+// ---- populate model select ----
+var modelSel = document.getElementById('fModel');
+DEFAULT_MODELS.forEach(function(m){
+  var o = document.createElement('option');
+  o.value = m.id; o.textContent = m.label;
+  modelSel.appendChild(o);
+});
+
+// ---- price editor ----
+var priceGrid = document.getElementById('priceGrid');
+function renderPriceGrid(){
+  priceGrid.innerHTML = '<div class="h">Model</div><div class="h">Input</div><div class="h">Output</div>';
+  DEFAULT_MODELS.forEach(function(m){
+    var p = prices[m.id];
+    var name = document.createElement('div');
+    name.textContent = m.label;
+    var inp1 = document.createElement('input');
+    inp1.type = 'number'; inp1.step = '0.01'; inp1.min = '0'; inp1.value = p.inPrice;
+    inp1.style.padding = '5px 6px'; inp1.style.fontSize = '12px';
+    inp1.onchange = function(){ p.inPrice = parseFloat(inp1.value)||0; saveJSON(LS_PRICES, prices); renderAll(); };
+    var inp2 = document.createElement('input');
+    inp2.type = 'number'; inp2.step = '0.01'; inp2.min = '0'; inp2.value = p.outPrice;
+    inp2.style.padding = '5px 6px'; inp2.style.fontSize = '12px';
+    inp2.onchange = function(){ p.outPrice = parseFloat(inp2.value)||0; saveJSON(LS_PRICES, prices); renderAll(); };
+    priceGrid.appendChild(name); priceGrid.appendChild(inp1); priceGrid.appendChild(inp2);
+  });
+}
+
+// ---- add-entry form ----
+var fDate = document.getElementById('fDate');
+var fProject = document.getElementById('fProject');
+var fIn = document.getElementById('fIn');
+var fOut = document.getElementById('fOut');
+var fNote = document.getElementById('fNote');
+var costPreview = document.getElementById('costPreview');
+fDate.value = todayStr();
+
+function updatePreview(){
+  var inTok = parseInt(fIn.value,10)||0, outTok = parseInt(fOut.value,10)||0;
+  costPreview.textContent = fmtUSD(costFor(modelSel.value, inTok, outTok));
+}
+[fIn, fOut, modelSel].forEach(function(el){ el.addEventListener('input', updatePreview); });
+updatePreview();
+
+document.getElementById('addBtn').onclick = function(){
+  var inTok = parseInt(fIn.value,10)||0, outTok = parseInt(fOut.value,10)||0;
+  if(!fDate.value){ alert('Kies een datum.'); return; }
+  if(inTok<=0 && outTok<=0){ alert('Vul minstens input- of output-tokens in.'); return; }
+  entries.push({
+    id: Date.now()+'-'+Math.random().toString(36).slice(2,7),
+    date: fDate.value,
+    project: fProject.value,
+    model: modelSel.value,
+    inTok: inTok,
+    outTok: outTok,
+    note: fNote.value.trim(),
+    createdAt: new Date().toISOString()
+  });
+  saveJSON(LS_ENTRIES, entries);
+  fIn.value = ''; fOut.value = ''; fNote.value = '';
+  updatePreview();
+  renderAll();
+};
+
+// ---- budget ----
+var fBudget = document.getElementById('fBudget');
+if(budget && budget.amount) fBudget.value = budget.amount;
+fBudget.onchange = function(){
+  var v = parseFloat(fBudget.value);
+  budget = (v>0) ? { amount:v } : null;
+  saveJSON(LS_BUDGET, budget);
+  renderAll();
+};
+
+// ---- rendering ----
+function computeCost(e){ return costFor(e.model, e.inTok, e.outTok); }
+
+function renderStats(list, gridEl){
+  var totals = { boodschappen:0, kennisbank:0, overig:0 };
+  var totalCost = 0, totalTok = 0;
+  list.forEach(function(e){
+    var c = computeCost(e);
+    totals[e.project] = (totals[e.project]||0) + c;
+    totalCost += c;
+    totalTok += e.inTok + e.outTok;
+  });
+  gridEl.innerHTML = '';
+  function stat(label, val, sub){
+    var d = document.createElement('div'); d.className = 'stat';
+    d.innerHTML = '<div class="lbl">'+label+'</div><div class="val">'+val+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'');
+    gridEl.appendChild(d);
+  }
+  stat('Totale kosten', fmtUSD2(totalCost), fmtTok(totalTok)+' tokens');
+  stat('🛒 Boodschappen', fmtUSD2(totals.boodschappen||0));
+  stat('📚 Kennisbank', fmtUSD2(totals.kennisbank||0));
+  stat('✨ Overig', fmtUSD2(totals.overig||0));
+  return totalCost;
+}
+
+function renderBudget(monthCost){
+  var bar = document.getElementById('budgetBar');
+  var txt = document.getElementById('budgetText');
+  if(!budget || !budget.amount){
+    bar.style.width = '0%'; bar.classList.remove('over');
+    txt.textContent = 'Geen budget ingesteld.';
+    return;
+  }
+  var pct = Math.min(100, (monthCost / budget.amount) * 100);
+  bar.style.width = pct + '%';
+  bar.classList.toggle('over', monthCost > budget.amount);
+  if(monthCost > budget.amount){
+    txt.textContent = fmtUSD2(monthCost)+' van '+fmtUSD2(budget.amount)+' — budget overschreden';
+  } else {
+    txt.textContent = fmtUSD2(monthCost)+' van '+fmtUSD2(budget.amount)+' gebruikt deze maand';
+  }
+}
+
+function renderChart(){
+  var days = [];
+  for(var i=13;i>=0;i--){
+    var d = new Date();
+    d.setDate(d.getDate()-i);
+    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+  }
+  var perDay = {};
+  days.forEach(function(d){ perDay[d] = { boodschappen:0, kennisbank:0, overig:0 }; });
+  entries.forEach(function(e){
+    if(perDay[e.date]) perDay[e.date][e.project] += computeCost(e);
+  });
+  var max = 0;
+  days.forEach(function(d){
+    var t = perDay[d].boodschappen + perDay[d].kennisbank + perDay[d].overig;
+    if(t>max) max = t;
+  });
+  var chart = document.getElementById('chart');
+  var labels = document.getElementById('chartLabels');
+  chart.innerHTML = ''; labels.innerHTML = '';
+  days.forEach(function(d, idx){
+    var v = perDay[d];
+    var total = v.boodschappen + v.kennisbank + v.overig;
+    var col = document.createElement('div');
+    col.className = 'col';
+    col.title = d + ': ' + fmtUSD2(total);
+    col.style.height = (max>0 ? Math.max(2, (total/max)*90) : 2) + 'px';
+    ['boodschappen','kennisbank','overig'].forEach(function(p){
+      if(v[p] <= 0) return;
+      var seg = document.createElement('div');
+      seg.className = 'seg';
+      seg.style.background = PROJECT_COLORS[p];
+      seg.style.height = (total>0 ? (v[p]/total*100) : 0) + '%';
+      col.appendChild(seg);
+    });
+    chart.appendChild(col);
+    var lab = document.createElement('span');
+    lab.textContent = (idx % 2 === 0) ? d.slice(8,10)+'/'+d.slice(5,7) : '';
+    labels.appendChild(lab);
+  });
+}
+
+function renderHistory(){
+  var hist = document.getElementById('history');
+  hist.innerHTML = '';
+  if(entries.length === 0){
+    hist.innerHTML = '<div class="empty">Nog geen posts. Voeg hierboven je eerste toe.</div>';
+    return;
+  }
+  var sorted = entries.slice().sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); });
+  sorted.slice(0, 50).forEach(function(e){
+    var row = document.createElement('div'); row.className = 'entry';
+    var meta = document.createElement('div'); meta.className = 'meta';
+    var modelInfo = DEFAULT_MODELS.find(function(m){ return m.id===e.model; });
+    var modelLabel = modelInfo ? modelInfo.label : e.model;
+    meta.innerHTML = '<div class="p1">'+PROJECT_LABELS[e.project]+'</div>'+
+      '<div class="p2">'+e.date+' · '+modelLabel+' · '+fmtTok(e.inTok)+' in / '+fmtTok(e.outTok)+' out'+(e.note?' · '+escapeHTML(e.note):'')+'</div>';
+    var cost = document.createElement('div'); cost.className = 'cost';
+    cost.textContent = fmtUSD2(computeCost(e));
+    var del = document.createElement('button'); del.className = 'del'; del.textContent = '✕';
+    del.onclick = function(){
+      if(!confirm('Deze post verwijderen?')) return;
+      entries = entries.filter(function(x){ return x.id !== e.id; });
+      saveJSON(LS_ENTRIES, entries);
+      renderAll();
+    };
+    row.appendChild(meta); row.appendChild(cost); row.appendChild(del);
+    hist.appendChild(row);
+  });
+  if(sorted.length > 50){
+    var more = document.createElement('div'); more.className = 'empty';
+    more.textContent = '+ '+(sorted.length-50)+' oudere posts (niet getoond)';
+    hist.appendChild(more);
+  }
+}
+
+function escapeHTML(s){
+  var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+function renderAll(){
+  var mKey = monthKey(todayStr());
+  var monthList = entries.filter(function(e){ return monthKey(e.date) === mKey; });
+  var monthCost = renderStats(monthList, document.getElementById('monthStats'));
+  renderStats(entries, document.getElementById('totalStats'));
+  renderBudget(monthCost);
+  renderChart();
+  renderHistory();
+}
+
+// ---- export / import / reset ----
+document.getElementById('exportBtn').onclick = function(){
+  var data = { entries: entries, prices: prices, budget: budget, exportedAt: new Date().toISOString() };
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'token-status-'+todayStr()+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+document.getElementById('importBtn').onclick = function(){
+  document.getElementById('importFile').click();
+};
+document.getElementById('importFile').onchange = function(ev){
+  var file = ev.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try {
+      var data = JSON.parse(reader.result);
+      if(!Array.isArray(data.entries)) throw new Error('ongeldig bestand');
+      if(!confirm('Dit vervangt je huidige gegevens op dit toestel door de inhoud van het bestand. Doorgaan?')) return;
+      entries = data.entries;
+      if(data.prices) prices = data.prices;
+      if(data.budget) budget = data.budget;
+      saveJSON(LS_ENTRIES, entries); saveJSON(LS_PRICES, prices); saveJSON(LS_BUDGET, budget);
+      fBudget.value = (budget && budget.amount) ? budget.amount : '';
+      renderPriceGrid();
+      renderAll();
+    } catch(e){
+      alert('Kon dit bestand niet lezen: '+e.message);
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+};
+document.getElementById('resetBtn').onclick = function(){
+  if(!confirm('Alle token-posts op dit toestel wissen? Dit kan niet ongedaan gemaakt worden.')) return;
+  entries = [];
+  saveJSON(LS_ENTRIES, entries);
+  renderAll();
+};
+
+renderPriceGrid();
+renderAll();
+})();
+</script>
+</body>
+</html>
