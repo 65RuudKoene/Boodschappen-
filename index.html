@@ -98,6 +98,21 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;white-space:nowrap}
 .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .pick-round-label{font-size:13px;color:var(--muted);white-space:nowrap;align-self:center;flex:0 0 auto}
+
+.confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
+.confetti-piece{position:absolute;width:8px;height:8px;border-radius:2px;margin:-4px 0 0 -4px;opacity:1;animation:confetti-burst .9s ease-out forwards}
+@keyframes confetti-burst{
+  0%{transform:translate(0,0) scale(1);opacity:1}
+  70%{opacity:1}
+  100%{transform:translate(var(--dx),calc(var(--dy) + 70px)) scale(.4);opacity:0}
+}
+.confetti-toast{position:fixed;left:50%;top:18%;transform:translateX(-50%) translateY(-6px);background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px 20px;font-size:16px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;animation:confetti-toast 1.7s ease-out forwards}
+@keyframes confetti-toast{
+  0%{opacity:0;transform:translateX(-50%) translateY(-6px) scale(.9)}
+  12%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  78%{opacity:1}
+  100%{opacity:0;transform:translateX(-50%) translateY(-6px) scale(.96)}
+}
 .meal-badge{display:inline-block;font-size:11px;font-weight:700;color:var(--accent-2);background:color-mix(in srgb,var(--accent-2) 14%,transparent);border-radius:8px;padding:2px 8px;margin-left:8px;vertical-align:middle}
 .empty{color:var(--muted);text-align:center;padding:28px 16px;font-size:15px}
 .src{display:inline-block;margin-top:12px;color:var(--accent-2);font-weight:600;font-size:14px;text-decoration:none}
@@ -622,6 +637,34 @@ function initPickSearch(){
   sc.onclick=()=>{ si.value=''; pickQuery=''; sc.classList.add('hidden'); renderPickList(curKey()); si.focus(); };
 }
 
+/* ---------- VIEREN: vuurwerkje bij een complete ronde ---------- */
+function celebrateRoundComplete(){
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const layer=document.createElement('div'); layer.className='confetti-layer';
+  const toast=document.createElement('div'); toast.className='confetti-toast'; toast.textContent='🎉 Ronde compleet!';
+  layer.appendChild(toast);
+  document.body.appendChild(layer);
+  const colors=['#ff3b30','#ff9500','#ffcc00','#34c759','#0a84ff','#5e5ce6','#ff2d55'];
+  const w=window.innerWidth, h=window.innerHeight;
+  const bursts=3;
+  for(let b=0;b<bursts;b++){
+    const bx=w*0.25+Math.random()*w*0.5;
+    const by=h*0.28+Math.random()*h*0.22;
+    const delay=b*160;
+    for(let i=0;i<26;i++){
+      const p=document.createElement('span'); p.className='confetti-piece';
+      const angle=(Math.PI*2*i/26)+Math.random()*0.3;
+      const dist=55+Math.random()*85;
+      p.style.left=bx+'px'; p.style.top=by+'px';
+      p.style.background=colors[(i+b)%colors.length];
+      p.style.setProperty('--dx',(Math.cos(angle)*dist)+'px');
+      p.style.setProperty('--dy',(Math.sin(angle)*dist)+'px');
+      p.style.animationDelay=delay+'ms';
+      layer.appendChild(p);
+    }
+  }
+  setTimeout(()=>layer.remove(),1700+bursts*160);
+}
 function renderShopWrap(key){
   ensureOpenRound(key);
   const wrap=document.getElementById('shopWrap'); wrap.innerHTML='';
@@ -682,14 +725,17 @@ function renderShopWrap(key){
         if((checksAll[key]||{})[round.id+'|'+it.c+'|'+it.n+'|'+it.u]) checked++;
       }));
       sub.textContent=recs.map(r=>r.emoji+' '+r.title).join(', ')+' · '+checked+'/'+total+' gehaald';
+      return total>0 && checked===total;
     }
     refreshStat();
+    /* Alleen vieren bij een actie van de gebruiker (afvinken), niet bij het openen van een al-complete ronde. */
+    function onRoundItemToggle(){ if(refreshStat()) celebrateRoundComplete(); }
 
     CATS.forEach(([ckey,label])=>{
       const items=cats[ckey]; if(!items||!items.length) return;
       const card=document.createElement('div'); card.className='card';
       const h=document.createElement('h2'); h.textContent=label; card.appendChild(h);
-      items.forEach(it=>addRow(card, shopText(it), round.id+'|'+it.c+'|'+it.n+'|'+it.u, {pantryName:it.n, onToggle:refreshStat}));
+      items.forEach(it=>addRow(card, shopText(it), round.id+'|'+it.c+'|'+it.n+'|'+it.u, {pantryName:it.n, onToggle:onRoundItemToggle}));
       body.appendChild(card);
     });
 
@@ -1093,7 +1139,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='27';
+const APP_VERSION='28';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1'];
