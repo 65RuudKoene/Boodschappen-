@@ -14,34 +14,42 @@ Admin-sleutel en de ruwe workspace-/API-key-ID's verlaten deze functie nooit.
    - Kopieer de sleutel (begint met `sk-ant-admin01-...`) meteen, hij wordt
      maar één keer getoond.
 
-2. **Workspace- of API-key-ID's opzoeken** voor elk project
-   - Console → **Settings → Workspaces** (of **API Keys**) → open elk
-     project se werkruimte/sleutel → kopieer het ID
-     (begint met `wrkspc_...` resp. `apikey_...`).
-
-3. **Secrets toevoegen in Supabase**
+2. **Secrets toevoegen in Supabase**
    Supabase-dashboard → **Edge Functions → Secrets**:
 
    | Naam | Waarde |
    |---|---|
    | `ANTHROPIC_ADMIN_API_KEY` | de sleutel uit stap 1 |
    | `TOKEN_STATUS_PASSWORD` | een zelfgekozen wachtwoord — vul je straks in op de token-status-pagina |
-   | `PROJECT_MAP` | JSON die ID's koppelt aan een project, bv.:<br>`{"wrkspc_xxx":"boodschappen","wrkspc_yyy":"kennisbank"}` |
+   | `PROJECT_MAP` | laat deze eerst leeg (`{}`) — die vul je in stap 5 |
 
-   Alles dat niet in `PROJECT_MAP` staat, wordt getoond als "overig".
-
-4. **Functie aanmaken**
+3. **Functie aanmaken**
    - Edge Functions → **Create a new function** → naam exact: `usage-report`.
    - Plak de inhoud van `index.ts` in de editor.
    - **Zet "Verify JWT" UIT** (de functie doet zelf een wachtwoordcheck).
    - **Deploy**.
 
-5. **Pagina koppelen**
+4. **Pagina koppelen**
    - Open de token-status-pagina → **Live vanuit Anthropic Console** →
      vul de functie-URL in (Supabase-dashboard → Edge Functions →
      `usage-report` → **Details** voor de exacte URL, iets als
      `https://xxxxx.supabase.co/functions/v1/usage-report`) en het
-     wachtwoord uit stap 3.
+     wachtwoord uit stap 2. Alle kosten staan er nu al, maar nog allemaal
+     onder "overig" — dat verhelp je in de volgende stap.
+
+5. **Kosten per project splitsen** (geen Console-gegraaf nodig)
+   - Klap op de pagina **🔍 ID's opzoeken (voor PROJECT_MAP)** open en klik
+     **Namen en ID's ophalen**. Je ziet nu al je werkruimtes/sleutels met
+     naam én code naast elkaar, met een **Kopieer**-knop.
+   - Kopieer de code die bij "Boodschappen" hoort en die bij "Kennisbank".
+   - Ga terug naar Supabase → Edge Functions → Secrets → open `PROJECT_MAP`
+     en zet er bijvoorbeeld in:
+     ```json
+     {"wrkspc_xxx":"boodschappen","wrkspc_yyy":"kennisbank"}
+     ```
+     (gebruik de gekopieerde codes; alles wat er niet in staat, blijft
+     "overig")
+   - Druk op de pagina op **↻ Vernieuwen** — de kosten zijn nu gesplitst.
 
 ## Kosten & verversing
 

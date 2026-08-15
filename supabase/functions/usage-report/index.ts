@@ -30,6 +30,49 @@ function dayKey(iso: string): string {
   return iso.slice(0, 10);
 }
 
+// Haalt naam + ID op van alle workspaces en API-sleutels, zodat je in de
+// tracker kunt zien welke code bij welk project hoort (in plaats van te
+// moeten zoeken in de Console).
+async function fetchNames(adminKey: string) {
+  const headers = {
+    "x-api-key": adminKey,
+    "anthropic-version": ANTHROPIC_VERSION,
+    "User-Agent": USER_AGENT,
+  };
+
+  async function listAll(path: string) {
+    const items: any[] = [];
+    let page: string | undefined;
+    for (let i = 0; i < 20; i++) {
+      const params = new URLSearchParams({ limit: "100" });
+      if (page) params.set("page", page);
+      const resp = await fetch(
+        "https://api.anthropic.com/v1/organizations/" + path + "?" + params.toString(),
+        { headers },
+      );
+      if (!resp.ok) {
+        const t = await resp.text();
+        throw new Error("Anthropic " + path + " " + resp.status + ": " + t.slice(0, 300));
+      }
+      const data = await resp.json();
+      items.push(...(data.data || []));
+      if (!data.has_more || !data.next_page) break;
+      page = data.next_page;
+    }
+    return items;
+  }
+
+  const [workspaces, apiKeys] = await Promise.all([
+    listAll("workspaces"),
+    listAll("api_keys"),
+  ]);
+
+  return {
+    workspaces: workspaces.map((w: any) => ({ id: w.id, name: w.name })),
+    apiKeys: apiKeys.map((k: any) => ({ id: k.id, name: k.name, workspaceId: k.workspace_id })),
+  };
+}
+
 // Haalt alle pagina's van het cost_report endpoint op voor de opgegeven periode.
 async function fetchCostReport(adminKey: string, startingAt: string, endingAt: string) {
   const results: any[] = [];
@@ -84,6 +127,11 @@ Deno.serve(async (req) => {
 
     const adminKey = Deno.env.get("ANTHROPIC_ADMIN_API_KEY");
     if (!adminKey) return json({ error: "Niet geconfigureerd (ANTHROPIC_ADMIN_API_KEY ontbreekt)" }, 500);
+
+    if (body?.mode === "list") {
+      const names = await fetchNames(adminKey);
+      return json(names);
+    }
 
     let projectMap: Record<string, string> = {};
     try {
