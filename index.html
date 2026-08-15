@@ -1093,7 +1093,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='26';
+const APP_VERSION='27';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1'];
@@ -1215,6 +1215,20 @@ goHome();
 (function(){ const pw=savedPass(); if(pw){ hideLogin(); syncConnect({url:SUPA_URL,key:SUPA_KEY,household:householdFromPass(pw)}).catch(function(e){ console.warn('sync init',e&&e.message?e.message:e); }); } else { showLogin(); } })();
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+
+/* ---------- SCHERM WAKKER HOUDEN ---------- */
+/* Voorkomt dat het scherm vergrendelt zolang deze pagina open en zichtbaar is (bv. tijdens het
+   afvinken van de boodschappenlijst in de winkel). Wordt automatisch losgelaten zodra je wegnavigeert
+   of het scherm zelf vergrendelt, en dan bij terugkeer weer aangevraagd. Stil genegeerd op toestellen/
+   browsers die dit niet ondersteunen. */
+let wakeLock=null;
+async function requestWakeLock(){
+  if(!('wakeLock' in navigator)) return;
+  try{ wakeLock=await navigator.wakeLock.request('screen'); }
+  catch(e){ wakeLock=null; }
+}
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') requestWakeLock(); });
+requestWakeLock();
 </script>
 </body>
 </html>
