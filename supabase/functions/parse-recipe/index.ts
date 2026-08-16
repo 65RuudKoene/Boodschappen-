@@ -25,7 +25,7 @@ function json(obj: unknown, status = 200) {
 
 const SYS = `Je zet een recept om naar strikte JSON voor een boodschappen-app. Antwoord UITSLUITEND met JSON, geen uitleg, geen tekst eromheen.
 Vorm:
-{"title":"...","time":"ca. X min","meal":"ontbijt|lunch|diner|tussendoor","emoji":"één passende emoji","ing":[{"q":getal-of-null,"u":"eenheid-of-lege-string","n":"ingrediëntnaam","c":"groente|vlees|zuivel|pasta|pot|voorraad"}],"steps":["stap 1","stap 2"]}
+{"title":"...","time":"ca. X min","meal":"ontbijt|lunch|diner|bbq|tussendoor","emoji":"één passende emoji","ing":[{"q":getal-of-null,"u":"eenheid-of-lege-string","n":"ingrediëntnaam","c":"groente|vlees|zuivel|pasta|pot|voorraad"}],"steps":["stap 1","stap 2"]}
 Regels:
 - Reken ALLE hoeveelheden om naar 2 personen (ook de getallen in de bereidingsstappen).
 - c = supermarktcategorie: groente (groente & fruit), vlees (vlees & vis), zuivel (zuivel & gekoeld), pasta (pasta, rijst, aardappelen), pot (potten, blikken, sauzen), voorraad (noten, kruiden, olie, voorraad).
