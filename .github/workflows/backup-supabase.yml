@@ -1,10 +1,10 @@
 name: Backup Supabase data
 
 # Zet elke dag een export van de app-data (tabel app_kv: boodschappenlijst,
-# recepten, planner, etc.) weg in de privé-repo boodschappen-backups.
+# recepten, planner, etc.) weg in de privé-repo Backup-Supabase-boodschappen-.
 #
 # Eenmalige setup (zie README hieronder in deze workflow):
-# 1. Maak een privé GitHub-repo met de naam "boodschappen-backups".
+# 1. Privé GitHub-repo "Backup-Supabase-boodschappen-" bestaat al.
 # 2. Maak een fine-grained Personal Access Token met "Contents: Read and write"
 #    rechten, alleen voor die repo.
 # 3. Zet dat token als repository secret BACKUP_REPO_TOKEN in deze repo
@@ -38,7 +38,7 @@ jobs:
         if: ${{ env.BACKUP_REPO_TOKEN != '' }}
         env:
           BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
-          BACKUP_REPO: 65RuudKoene/boodschappen-backups
+          BACKUP_REPO: 65RuudKoene/Backup-Supabase-boodschappen-
         run: |
           set -euo pipefail
           date=$(date -u +%Y-%m-%d)
