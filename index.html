@@ -53,6 +53,9 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .pick-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:15px}
 .pick-item:last-child{border-bottom:none}
 .pick-item input{width:22px;height:22px;accent-color:var(--accent)}
+.pick-item span{flex:1;min-width:0}
+.pick-fav{flex:0 0 auto;margin-left:auto;border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;padding:4px 2px}
+.pick-fav.active{color:#ffcc00}
 .selchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
 .selchip{display:inline-flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 2px 2px 4px;font-size:13px}
 .linkbtn.newround{color:var(--accent)}
@@ -79,8 +82,11 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .recipe li{margin:8px 0;line-height:1.35}
 .recipe{padding:0;overflow:hidden;scroll-margin-top:96px}
 .recipe .body{padding:14px}
-.recipe-head{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:0;background:transparent;padding:14px;cursor:pointer}
-.recipe-head:active{transform:scale(.99)}
+.recipe-head{display:flex;align-items:center;width:100%}
+.recipe-head-main{display:flex;align-items:center;gap:14px;flex:1;min-width:0;text-align:left;border:0;background:transparent;padding:14px 0 14px 14px;cursor:pointer}
+.recipe-head-main:active{transform:scale(.99)}
+.recipe-fav{flex:0 0 auto;border:0;background:transparent;color:var(--muted);font-size:22px;line-height:1;padding:14px;cursor:pointer}
+.recipe-fav.active{color:#ffcc00}
 .recipe-head-thumb{flex:0 0 52px;width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;background:linear-gradient(135deg,var(--h1),var(--h2));text-shadow:0 1px 3px rgba(0,0,0,.2)}
 .recipe-head-info{flex:1;min-width:0}
 .recipe-head-title{font-size:16px;font-weight:700;line-height:1.3;display:block}
@@ -229,6 +235,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
         <input id="pickSearch" type="search" inputmode="search" placeholder="Zoek recept of ingrediënt…" autocomplete="off">
         <button class="clr hidden" id="pickSearchClear" aria-label="Wissen">✕</button>
       </div>
+      <div class="chips" id="pickFavFilter"></div>
       <div class="chips" id="pickFilter"></div>
       <div class="chips hidden" id="pickDinnerTypeFilter"></div>
       <div class="chips hidden" id="pickRoundFilter"></div>
@@ -243,6 +250,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <input id="recipeSearch" type="search" inputmode="search" placeholder="Zoek recept of ingrediënt…" autocomplete="off">
     <button class="clr hidden" id="searchClear" aria-label="Wissen">✕</button>
   </div>
+  <div class="chips" id="favFilter"></div>
   <div class="chips" id="mealFilter"></div>
   <div class="chips hidden" id="dinnerTypeFilter"></div>
   <button class="surprise" onclick="showAdd()">➕ Recept toevoegen (AI)</button>
@@ -373,8 +381,11 @@ let deletedSeedIds=JSON.parse(localStorage.getItem('hidden-recipes-v1')||'[]');
 let weekServings=JSON.parse(localStorage.getItem('week-servings-v1')||'{}');
 let pantry=JSON.parse(localStorage.getItem('pantry-v1')||'[]');
 let recipeNotes=JSON.parse(localStorage.getItem('recipe-notes-v1')||'{}');
+/* Favoriete recepten: 1 ster per recept, gecombineerd met het bestaande maaltijdtype-filter
+   (Ontbijt/Lunch/Diner/Tussendoor) filter je zo op 'mijn favoriete lunches', 'mijn favoriete diners', etc. */
+let favoriteRecipes=JSON.parse(localStorage.getItem('favorite-recipes-v1')||'[]');
 let doneHidden=false, pickerOpen=false;
-let pickMeal='alle', pickQuery='', pickDinnerType='alle', pickRoundId=null;
+let pickMeal='alle', pickQuery='', pickDinnerType='alle', pickRoundId=null, pickFavOnly=false;
 function persist(k,val){ localStorage.setItem(k,JSON.stringify(val)); syncPush(k,val); }
 function savePlanner(){ persist('planner-weeks-v1',plannerWeeks); }
 function saveRounds(){ persist('planner-rounds-v1',roundsAll); }
@@ -385,6 +396,13 @@ function saveWeekServings(){ persist('week-servings-v1',weekServings); }
 function savePantry(){ persist('pantry-v1',pantry); }
 function saveNotes(){ persist('recipe-notes-v1',recipeNotes); }
 function saveCustom(){ persist('custom-recipes-v1',customRecipes); }
+function saveFavorites(){ persist('favorite-recipes-v1',favoriteRecipes); }
+function isFavorite(id){ return favoriteRecipes.includes(id); }
+function toggleFavorite(id){
+  const i=favoriteRecipes.indexOf(id);
+  if(i>=0) favoriteRecipes.splice(i,1); else favoriteRecipes.push(id);
+  saveFavorites();
+}
 function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 /* Voegt basisrecepten toe die nog ontbreken (nieuw, of nog nooit gemigreerd) — overslaat wat de gebruiker al verwijderde.
    Recepten met een hoger 'v' (versie) dan de al-opgeslagen versie worden bijgewerkt, zodat latere correcties
@@ -549,7 +567,7 @@ function renderSel(key){
   if(nrBtn) nrBtn.classList.toggle('hidden', !ids.length);
 }
 function openRecipe(id){
-  mealFilter='alle'; searchQuery=''; dinnerType='alle';
+  mealFilter='alle'; searchQuery=''; dinnerType='alle'; favOnly=false;
   const si=document.getElementById('recipeSearch');
   if(si){ si.value=''; document.getElementById('searchClear').classList.add('hidden'); }
   renderChips(); renderRecipes();
@@ -561,7 +579,16 @@ function pickMatches(r){
   const q=pickQuery.toLowerCase();
   return r.title.toLowerCase().includes(q) || r.ing.some(g=>g.n.toLowerCase().includes(q));
 }
+function renderPickFavChip(){
+  const bar=document.getElementById('pickFavFilter'); bar.innerHTML='';
+  const b=document.createElement('button');
+  b.className='chip'+(pickFavOnly?' active':'');
+  b.textContent='⭐ Favorieten';
+  b.onclick=()=>{ pickFavOnly=!pickFavOnly; renderPickFavChip(); renderPickList(curKey()); };
+  bar.appendChild(b);
+}
 function renderPickChips(){
+  renderPickFavChip();
   const bar=document.getElementById('pickFilter'); bar.innerHTML='';
   [['alle','Alle'],...Object.entries(MEALS)].forEach(([k,label])=>{
     const b=document.createElement('button');
@@ -602,10 +629,19 @@ function renderPickRoundChips(key){
 }
 function renderPickList(key){
   const el=document.getElementById('pickList'), ids=plannerWeeks[key]||[];
-  const list=allRecipes().filter(r=>(pickMeal==='alle'||r.meal===pickMeal) && (pickMeal!=='diner'||pickDinnerType==='alle'||inferDinnerType(r)===pickDinnerType) && pickMatches(r));
-  if(!list.length){ el.innerHTML='<div class="empty">Geen recepten gevonden.</div>'; return; }
-  el.innerHTML=list.map(r=>'<label class="pick-item"><input type="checkbox" data-id="'+r.id+'"'+(ids.includes(r.id)?' checked':'')+'><span>'+r.emoji+' '+r.title+'</span></label>').join('');
+  const list=allRecipes().filter(r=>(pickMeal==='alle'||r.meal===pickMeal) && (pickMeal!=='diner'||pickDinnerType==='alle'||inferDinnerType(r)===pickDinnerType) && (!pickFavOnly||isFavorite(r.id)) && pickMatches(r));
+  if(!list.length){ el.innerHTML='<div class="empty">'+(pickFavOnly?'Nog geen favorieten in deze categorie.':'Geen recepten gevonden.')+'</div>'; return; }
+  el.innerHTML=list.map(r=>'<label class="pick-item"><input type="checkbox" data-id="'+r.id+'"'+(ids.includes(r.id)?' checked':'')+'><span>'+r.emoji+' '+r.title+'</span><button type="button" class="pick-fav'+(isFavorite(r.id)?' active':'')+'" data-fav-id="'+r.id+'" aria-label="Favoriet">'+(isFavorite(r.id)?'★':'☆')+'</button></label>').join('');
   el.querySelectorAll('input').forEach(cb=>{ cb.onchange=()=>toggleRecipeInWeek(key,cb.dataset.id,cb.checked); });
+  el.querySelectorAll('.pick-fav').forEach(b=>{
+    b.onclick=(e)=>{
+      e.preventDefault(); e.stopPropagation();
+      toggleFavorite(b.dataset.favId);
+      b.classList.toggle('active',isFavorite(b.dataset.favId));
+      b.textContent=isFavorite(b.dataset.favId)?'★':'☆';
+      if(pickFavOnly) renderPickList(key);
+    };
+  });
 }
 function renderPicker(key){ renderPickChips(); renderPickRoundChips(key); renderPickList(key); }
 function togglePicker(){
@@ -850,7 +886,7 @@ function copyPrevWeek(){
 /* ---------- RECIPES VIEW ---------- */
 const MEALS={ontbijt:"Ontbijt",lunch:"Lunch",diner:"Diner",tussendoor:"Tussendoor"};
 const DINNER_TYPES=[['pasta','Pasta'],['kip','Kip'],['vis','Vis'],['vlees','Vlees'],['vega','Vegetarisch']];
-let mealFilter='alle', searchQuery='', dinnerType='alle';
+let mealFilter='alle', searchQuery='', dinnerType='alle', favOnly=false;
 /* Bepaalt het dinertype: gebruikt r.type als dat er is, anders een gok op basis van ingrediënten/titel. */
 function inferDinnerType(r){
   if(r.type && DINNER_TYPES.some(t=>t[0]===r.type)) return r.type;
@@ -862,7 +898,16 @@ function inferDinnerType(r){
   return 'vega';
 }
 
+function renderFavChip(){
+  const bar=document.getElementById('favFilter'); bar.innerHTML='';
+  const b=document.createElement('button');
+  b.className='chip'+(favOnly?' active':'');
+  b.textContent='⭐ Favorieten';
+  b.onclick=()=>{ favOnly=!favOnly; renderFavChip(); renderRecipes(); };
+  bar.appendChild(b);
+}
 function renderChips(){
+  renderFavChip();
   const bar=document.getElementById('mealFilter'); bar.innerHTML='';
   [['alle','Alle'],...Object.entries(MEALS)].forEach(([key,label])=>{
     const b=document.createElement('button');
@@ -895,7 +940,7 @@ function hues(str){ let h=0; for(let i=0;i<str.length;i++) h=(h*31+str.charCodeA
 
 function renderRecipes(){
   const root=document.getElementById('recipes'); root.innerHTML='';
-  const list=allRecipes().filter(r=>(mealFilter==='alle'||r.meal===mealFilter) && (mealFilter!=='diner'||dinnerType==='alle'||inferDinnerType(r)===dinnerType) && matchesSearch(r));
+  const list=allRecipes().filter(r=>(mealFilter==='alle'||r.meal===mealFilter) && (mealFilter!=='diner'||dinnerType==='alle'||inferDinnerType(r)===dinnerType) && (!favOnly||isFavorite(r.id)) && matchesSearch(r));
   if(!list.length){
     root.innerHTML='<div class="empty">'+(searchQuery?'Geen recepten gevonden voor \u201c'+searchQuery+'\u201d.':'Nog geen recepten in deze categorie.<br>Stuur er een naar mij, dan zet ik \u2019m erbij.')+'</div>';
     return;
@@ -903,13 +948,23 @@ function renderRecipes(){
   list.forEach(r=>{
     const [h1,h2]=hues(r.title);
     const card=document.createElement('article'); card.className='card recipe'; card.id='recipe-'+r.id;
-    const head=document.createElement('button'); head.className='recipe-head'; head.type='button';
+    const head=document.createElement('div'); head.className='recipe-head';
+    const headMain=document.createElement('button'); headMain.className='recipe-head-main'; headMain.type='button';
     const headThumb=document.createElement('span'); headThumb.className='recipe-head-thumb'; headThumb.style.setProperty('--h1','hsl('+h1+' 55% 55%)'); headThumb.style.setProperty('--h2','hsl('+h2+' 55% 42%)'); headThumb.textContent=r.emoji||'🍽️';
     const headSub=(r.meal&&MEALS[r.meal]?MEALS[r.meal]:'')+(r.time?' · '+r.time:'');
     const headInfo=document.createElement('span'); headInfo.className='recipe-head-info'; headInfo.innerHTML='<span class="recipe-head-title">'+r.title+'</span><span class="recipe-head-sub">'+headSub+'</span>';
     const headChev=document.createElement('span'); headChev.className='chev'; headChev.textContent='›';
-    head.append(headThumb,headInfo,headChev);
-    head.onclick=()=>{ card.classList.toggle('expanded'); };
+    headMain.append(headThumb,headInfo,headChev);
+    headMain.onclick=()=>{ card.classList.toggle('expanded'); };
+    const favBtn=document.createElement('button'); favBtn.className='recipe-fav'+(isFavorite(r.id)?' active':''); favBtn.type='button'; favBtn.setAttribute('aria-label','Favoriet'); favBtn.textContent=isFavorite(r.id)?'★':'☆';
+    favBtn.onclick=(e)=>{
+      e.stopPropagation();
+      toggleFavorite(r.id);
+      favBtn.classList.toggle('active',isFavorite(r.id));
+      favBtn.textContent=isFavorite(r.id)?'★':'☆';
+      if(favOnly) renderRecipes();
+    };
+    head.append(headMain,favBtn);
     const img=document.createElement('img'); img.loading='lazy'; img.alt=r.title; img.referrerPolicy='no-referrer'; img.src=r.image?r.image:'images/'+r.id+'.jpg'; img.onerror=function(){this.remove();};
     const thumb=document.createElement('div'); thumb.className='thumb';
     thumb.style.setProperty('--h1','hsl('+h1+' 55% 55%)');
@@ -953,7 +1008,7 @@ function surprise(){
   const list=allRecipes();
   if(!list.length) return;
   const r=list[Math.floor(Math.random()*list.length)];
-  mealFilter='alle'; searchQuery=''; dinnerType='alle';
+  mealFilter='alle'; searchQuery=''; dinnerType='alle'; favOnly=false;
   const si=document.getElementById('recipeSearch');
   if(si){ si.value=''; document.getElementById('searchClear').classList.add('hidden'); }
   renderChips(); renderRecipes();
@@ -976,6 +1031,7 @@ function deleteRecipe(id){
     (roundsAll[k]||[]).forEach(r=>{ const i=r.recipeIds.indexOf(id); if(i>=0){ r.recipeIds.splice(i,1); roundsChanged=true; } });
   });
   if(roundsChanged) saveRounds();
+  if(favoriteRecipes.includes(id)){ favoriteRecipes=favoriteRecipes.filter(x=>x!==id); saveFavorites(); }
   renderChips(); renderRecipes(); refreshHome();
 }
 
@@ -1133,17 +1189,17 @@ function confirmAddRecipe(){
   const au=document.getElementById('addUrl'); if(au) au.value='';
   document.getElementById('addStatus').textContent='';
   document.getElementById('addPreview').innerHTML='';
-  mealFilter='alle'; searchQuery=''; dinnerType='alle';
+  mealFilter='alle'; searchQuery=''; dinnerType='alle'; favOnly=false;
   renderChips(); renderRecipes(); refreshHome();
   show('recipesView'); setHeader('recipes');
   window.scrollTo(0,0);
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='30';
+const APP_VERSION='31';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
-const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1'];
+const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
 let sb=null, syncCfg=null, syncApplying=false, lastPush={};
 /* wachtwoord -> gedeelde ruimte (cyrb53-hash; het wachtwoord zelf komt niet in de database) */
 function householdFromPass(pw){ let h1=0xdeadbeef,h2=0x41c6ce57; for(let i=0;i<pw.length;i++){ const c=pw.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); } h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909); return 'hh_'+(h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0'); }
@@ -1162,6 +1218,7 @@ function applyIncoming(k,v){
   else if(k==='recipe-notes-v1') recipeNotes=v||{};
   else if(k==='custom-recipes-v1'){ customRecipes=v||[]; rebuildIndex(); }
   else if(k==='planner-rounds-v1') roundsAll=v||{};
+  else if(k==='favorite-recipes-v1') favoriteRecipes=v||[];
   localStorage.setItem(k,JSON.stringify(v));
   syncApplying=false;
 }
@@ -1216,7 +1273,7 @@ function doLogout(){
   try{ if(sb) sb.removeAllChannels(); }catch(e){}
   sb=null; syncCfg=null;
   localStorage.removeItem('sync-pass-v1');
-  plannerWeeks={}; checksAll={}; manualAll={}; deletedSeedIds=[]; weekServings={}; pantry=[]; recipeNotes={}; customRecipes=[]; roundsAll={};
+  plannerWeeks={}; checksAll={}; manualAll={}; deletedSeedIds=[]; weekServings={}; pantry=[]; recipeNotes={}; customRecipes=[]; roundsAll={}; favoriteRecipes=[];
   SYNC_KEYS.forEach(function(k){ localStorage.removeItem(k); });
   mergeSeedRecipes(); rebuildIndex();
   goHome(); showLogin();
