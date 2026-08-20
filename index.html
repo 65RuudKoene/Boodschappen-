@@ -1196,7 +1196,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='32';
+const APP_VERSION='33';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
@@ -1328,8 +1328,16 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 let wakeLock=null;
 async function requestWakeLock(){
   if(!('wakeLock' in navigator)) return;
-  try{ wakeLock=await navigator.wakeLock.request('screen'); }
-  catch(e){ wakeLock=null; }
+  if(wakeLock && !wakeLock.released) return;
+  try{
+    wakeLock=await navigator.wakeLock.request('screen');
+    /* iOS kan de lock soms stilletjes weer intrekken zonder dat de pagina van tabblad wisselt
+       (bv. na een tijdje, of onder geheugendruk). Direct opnieuw aanvragen zolang je nog kijkt. */
+    wakeLock.addEventListener('release',function(){
+      wakeLock=null;
+      if(document.visibilityState==='visible') requestWakeLock();
+    });
+  }catch(e){ wakeLock=null; }
 }
 /* Extra vangnet: op iOS was er tot en met iOS 18.3 een bug waardoor de Wake Lock API niet werkte
    zodra de app vanaf het beginscherm gestart is (dus als 'echte' app, niet in de Safari-tab zelf).
@@ -1343,15 +1351,26 @@ function playNoSleepVideo(){
     v.muted=true; v.loop=true; v.playsInline=true;
     v.setAttribute('muted',''); v.setAttribute('playsinline',''); v.setAttribute('webkit-playsinline','');
     v.src=NOSLEEP_SRC;
-    v.style.cssText='position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none';
+    /* Bewust WEL binnen het scherm (niet ver buiten beeld geplaatst): sommige mobiele browsers
+       zetten video's die volledig buiten de viewport staan op pauze om stroom te besparen, waardoor
+       het trucje juist niet meer werkt. z-index -1 + bijna-nul-opacity houdt 'm onzichtbaar. */
+    v.style.cssText='position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1';
     document.body.appendChild(v);
     noSleepVideo=v;
   }
-  noSleepVideo.play().catch(function(){});
+  if(noSleepVideo.paused) noSleepVideo.play().catch(function(){});
 }
-document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible'){ requestWakeLock(); playNoSleepVideo(); } });
-requestWakeLock();
-playNoSleepVideo();
+function keepAwakeTick(){
+  if(document.visibilityState!=='visible') return;
+  requestWakeLock();
+  playNoSleepVideo();
+}
+document.addEventListener('visibilitychange',keepAwakeTick);
+/* Periodieke controle als extra vangnet, voor het geval de wake lock/video toch een keer stilletjes stopt
+   zonder dat er een release- of visibility-gebeurtenis afgaat. */
+setInterval(keepAwakeTick,20000);
+['click','touchstart','pointerdown'].forEach(function(evt){ document.addEventListener(evt,keepAwakeTick,{passive:true}); });
+keepAwakeTick();
 </script>
 </body>
 </html>
