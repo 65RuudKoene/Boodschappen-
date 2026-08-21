@@ -145,6 +145,9 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .linkbtn.copyweek{padding:6px 0}
 .surprise{display:block;width:100%;background:var(--card);color:var(--text);font-weight:600;font-size:15px;border-radius:12px;padding:12px;margin:2px 0 8px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .surprise:active{transform:scale(.99)}
+.pickbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--accent);color:#fff;font-weight:700;font-size:16px;padding:14px;border-radius:14px;margin:10px 0 2px;box-shadow:0 2px 8px color-mix(in srgb,var(--accent) 35%,transparent);transition:transform .12s ease}
+.pickbtn:active{transform:scale(.98)}
+.pickbtn.open{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid var(--line)}
 .note-wrap{margin:12px 0 2px}
 .note-wrap label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
 .note-wrap textarea{width:100%;min-height:44px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:9px 11px;font-size:15px;font-family:inherit;resize:vertical}
@@ -229,7 +232,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <div id="selRecipes"></div>
     <button class="linkbtn newround hidden" id="newRoundBtn" onclick="startNewRound(curKey())">↻ Nieuwe ronde starten</button>
     <button class="linkbtn copyweek hidden" id="copyWeekBtn" onclick="copyPrevWeek()"></button>
-    <button class="linkbtn" id="pickBtn" onclick="togglePicker()">Recepten kiezen</button>
+    <button class="pickbtn" id="pickBtn" onclick="togglePicker()">🍽️ Recepten kiezen</button>
     <div id="picker" class="picker hidden">
       <div class="search">
         <input id="pickSearch" type="search" inputmode="search" placeholder="Zoek recept of ingrediënt…" autocomplete="off">
@@ -481,7 +484,7 @@ function renderShopping(){
   const key=curKey();
   pickerOpen=false;
   document.getElementById('picker').classList.add('hidden');
-  document.getElementById('pickBtn').textContent='Recepten kiezen';
+  const pickBtn=document.getElementById('pickBtn'); pickBtn.textContent='🍽️ Recepten kiezen'; pickBtn.classList.remove('open');
   renderWeekbar();
   renderSel(key); renderPicker(key); renderShopWrap(key);
 }
@@ -647,7 +650,9 @@ function renderPicker(key){ renderPickChips(); renderPickRoundChips(key); render
 function togglePicker(){
   pickerOpen=!pickerOpen;
   document.getElementById('picker').classList.toggle('hidden',!pickerOpen);
-  document.getElementById('pickBtn').textContent=pickerOpen?'Klaar met kiezen':'Recepten kiezen';
+  const btn=document.getElementById('pickBtn');
+  btn.textContent=pickerOpen?'✅ Klaar met kiezen':'🍽️ Recepten kiezen';
+  btn.classList.toggle('open',pickerOpen);
   if(pickerOpen){ pickRoundId=null; renderPicker(curKey()); }
 }
 function toggleRecipeInWeek(key,id,on){
@@ -1196,7 +1201,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='33';
+const APP_VERSION='34';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
