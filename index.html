@@ -188,7 +188,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 </div>
 
 <header>
-  <button id="backBtn" class="back hidden" onclick="goHome()">‹ Start</button>
+  <button id="backBtn" class="back hidden" onclick="goBack()">‹ Start</button>
   <div style="flex:1">
     <h1 id="pageTitle">Boodschappen</h1>
     <div class="sub" id="subtitle"></div>
@@ -570,6 +570,7 @@ function renderSel(key){
   if(nrBtn) nrBtn.classList.toggle('hidden', !ids.length);
 }
 function openRecipe(id){
+  backTarget=function(){ showTab('shop'); };
   mealFilter='alle'; searchQuery=''; dinnerType='alle'; favOnly=false;
   const si=document.getElementById('recipeSearch');
   if(si){ si.value=''; document.getElementById('searchClear').classList.add('hidden'); }
@@ -1050,7 +1051,14 @@ function setHeader(view){
   if(view==='add'){ t.textContent='Recept toevoegen'; s.textContent='Link of foto — de AI doet de rest.'; b.classList.remove('hidden'); }
 }
 function show(id){ ['homeView','shoppingView','recipesView','syncView','addView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id)); }
-function goHome(){ show('homeView'); setHeader('home'); refreshHome(); window.scrollTo(0,0); }
+function goHome(){ backTarget=null; show('homeView'); setHeader('home'); refreshHome(); window.scrollTo(0,0); }
+/* Onthoudt waar je vandaan kwam als je een recept opende vanuit de boodschappenlijst (openRecipe),
+   zodat 'Start' je 1 stap terugbrengt in plaats van meteen helemaal naar het beginscherm. */
+let backTarget=null;
+function goBack(){
+  if(backTarget){ const fn=backTarget; backTarget=null; fn(); }
+  else goHome();
+}
 function showTab(tab){
   if(tab==='shop'){ show('shoppingView'); setHeader('shop'); renderShopping(); }
   else { show('recipesView'); setHeader('recipes'); }
@@ -1201,7 +1209,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='34';
+const APP_VERSION='35';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
