@@ -1,0 +1,66 @@
+name: Backup Supabase data
+
+# Zet elke dag een export van de app-data (tabel app_kv: boodschappenlijst,
+# recepten, planner, etc.) weg in de privé-repo Backup-Supabase-boodschappen-.
+#
+# Eenmalige setup (zie README hieronder in deze workflow):
+# 1. Privé GitHub-repo "Backup-Supabase-boodschappen-" bestaat al.
+# 2. Maak een fine-grained Personal Access Token met "Contents: Read and write"
+#    rechten, alleen voor die repo.
+# 3. Zet dat token als repository secret BACKUP_REPO_TOKEN in deze repo
+#    (Settings > Secrets and variables > Actions > New repository secret).
+
+on:
+  schedule:
+    - cron: '5 4 * * *'   # elke dag om 04:05 UTC
+  workflow_dispatch:        # met de hand starten kan ook
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Data ophalen bij Supabase
+        env:
+          SUPABASE_URL: https://uutvmhoplasohgucxopa.supabase.co
+          SUPABASE_KEY: sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o backup.json -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/app_kv?select=household,k,v,updated_at" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+          echo "Supabase antwoordde met HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "Backup mislukt, geen geldig antwoord van Supabase"; exit 1
+          fi
+
+      - name: Backup wegschrijven naar privé-repo
+        if: ${{ env.BACKUP_REPO_TOKEN != '' }}
+        env:
+          BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
+          BACKUP_REPO: 65RuudKoene/Backup-Supabase-boodschappen-
+        run: |
+          set -euo pipefail
+          date=$(date -u +%Y-%m-%d)
+          git clone "https://x-access-token:${BACKUP_REPO_TOKEN}@github.com/${BACKUP_REPO}.git" backup-repo
+          mkdir -p backup-repo/supabase
+          cp backup.json "backup-repo/supabase/app_kv-${date}.json"
+
+          cd backup-repo
+          # oude dumps opruimen, de laatste 90 bewaren
+          ls -1t supabase/app_kv-*.json 2>/dev/null | tail -n +91 | xargs -r rm --
+
+          git config user.name "backup-bot"
+          git config user.email "backup-bot@users.noreply.github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "Geen wijzigingen, niets te committen"
+          else
+            git commit -m "Backup app_kv ${date}"
+            git push
+          fi
+
+      - name: Secret ontbreekt nog
+        if: ${{ env.BACKUP_REPO_TOKEN == '' }}
+        run: |
+          echo "::warning::BACKUP_REPO_TOKEN secret is nog niet ingesteld, backup is opgehaald maar niet weggeschreven. Zie de comments bovenin dit workflow-bestand."
