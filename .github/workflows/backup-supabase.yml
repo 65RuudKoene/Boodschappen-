@@ -18,6 +18,9 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    env:
+      BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
+      BACKUP_REPO: 65RuudKoene/Backup-Supabase-boodschappen-
     steps:
       - name: Data ophalen bij Supabase
         env:
@@ -35,10 +38,7 @@ jobs:
           fi
 
       - name: Backup wegschrijven naar privé-repo
-        if: ${{ secrets.BACKUP_REPO_TOKEN != '' }}
-        env:
-          BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
-          BACKUP_REPO: 65RuudKoene/Backup-Supabase-boodschappen-
+        if: ${{ env.BACKUP_REPO_TOKEN != '' }}
         run: |
           set -euo pipefail
           date=$(date -u +%Y-%m-%d)
@@ -61,6 +61,6 @@ jobs:
           fi
 
       - name: Secret ontbreekt nog
-        if: ${{ secrets.BACKUP_REPO_TOKEN == '' }}
+        if: ${{ env.BACKUP_REPO_TOKEN == '' }}
         run: |
           echo "::warning::BACKUP_REPO_TOKEN secret is nog niet ingesteld, backup is opgehaald maar niet weggeschreven. Zie de comments bovenin dit workflow-bestand."
