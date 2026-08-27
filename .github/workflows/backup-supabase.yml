@@ -35,7 +35,7 @@ jobs:
           fi
 
       - name: Backup wegschrijven naar privé-repo
-        if: ${{ env.BACKUP_REPO_TOKEN != '' }}
+        if: ${{ secrets.BACKUP_REPO_TOKEN != '' }}
         env:
           BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
           BACKUP_REPO: 65RuudKoene/Backup-Supabase-boodschappen-
@@ -61,6 +61,6 @@ jobs:
           fi
 
       - name: Secret ontbreekt nog
-        if: ${{ env.BACKUP_REPO_TOKEN == '' }}
+        if: ${{ secrets.BACKUP_REPO_TOKEN == '' }}
         run: |
           echo "::warning::BACKUP_REPO_TOKEN secret is nog niet ingesteld, backup is opgehaald maar niet weggeschreven. Zie de comments bovenin dit workflow-bestand."
