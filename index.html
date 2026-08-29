@@ -1422,7 +1422,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='37';
+const APP_VERSION='38';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
@@ -1663,7 +1663,18 @@ goHome();
 
 (function(){ const pw=savedPass(); if(pw){ hideLogin(); syncConnect({url:SUPA_URL,key:SUPA_KEY,household:householdFromPass(pw)}).catch(function(e){ console.warn('sync init',e&&e.message?e.message:e); }); } else { showLogin(); } })();
 
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
+  /* Zodra een nieuwe versie van de service worker het roer overneemt (na een
+     update), herlaadt de pagina zichzelf één keer automatisch — zo hoeft
+     niemand na een update handmatig de app te sluiten/heropenen. */
+  let swRefreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',function(){
+    if(swRefreshing) return;
+    swRefreshing=true;
+    location.reload();
+  });
+}
 
 /* ---------- SCHERM WAKKER HOUDEN ---------- */
 /* Voorkomt dat het scherm vergrendelt zolang deze pagina open en zichtbaar is (bv. tijdens het
