@@ -465,7 +465,7 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
     </div>
     <div id="addPhotoMode" class="hidden">
       <label style="display:block;font-size:13px;color:var(--muted);margin:10px 0 6px">Foto('s) van het recept (max 4, bijv. voor- en achterkant)</label>
-      <input id="addPhotoInput" type="file" accept="image/*" capture="environment" multiple class="hidden">
+      <input id="addPhotoInput" type="file" accept="image/*" multiple class="hidden">
       <div id="addPhotoThumbs" class="photo-thumbs"></div>
     </div>
     <button id="addFetchBtn" class="actionbtn">Ophalen met AI</button>
@@ -1465,7 +1465,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='40';
+const APP_VERSION='41';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
