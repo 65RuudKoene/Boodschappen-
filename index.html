@@ -194,12 +194,22 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .serv .lbl{font-size:14px;color:var(--muted)}
 .serv-note{display:block;margin:2px 0 4px}
 .stepper{display:inline-flex;align-items:center;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px}
-.stepper button{width:34px;height:34px;border-radius:999px;background:var(--card);color:var(--text);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.stepper button{width:34px;height:34px;border-radius:999px;background:var(--card);color:var(--text);font-size:0;line-height:1;position:relative;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .stepper button:disabled{opacity:.35;box-shadow:none}
 .stepper .cnt{min-width:96px;text-align:center;font-size:14px;font-weight:600}
 .selchip .mini{display:inline-flex;align-items:center;gap:1px;margin:0 2px;flex:0 0 auto}
-.selchip .mini button{width:26px;height:26px;border-radius:999px;background:var(--bg);color:var(--text);font-size:17px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center}
+.selchip .mini button{width:26px;height:26px;border-radius:999px;background:var(--bg);color:var(--text);font-size:0;line-height:1;position:relative;padding:0;display:flex;align-items:center;justify-content:center}
 .selchip .mini .n{min-width:22px;text-align:center;font-size:12px;font-weight:700;color:var(--muted)}
+/* De tekstglyphs "−"/"+" staan per lettertype niet altijd gelijk gecentreerd (de min-teken
+   met name). Zelf getekende streepjes centreren wel altijd exact, ongeacht platform/font. */
+.stepper .minus::before,.stepper .plus::before,.stepper .plus::after,
+.selchip .mini .s-minus::before,.selchip .mini .s-plus::before,.selchip .mini .s-plus::after{
+  content:'';position:absolute;top:50%;left:50%;background:currentColor;border-radius:1px;
+}
+.stepper .minus::before,.stepper .plus::before{width:12px;height:2px;transform:translate(-50%,-50%)}
+.stepper .plus::after{width:2px;height:12px;transform:translate(-50%,-50%)}
+.selchip .mini .s-minus::before,.selchip .mini .s-plus::before{width:9px;height:2px;transform:translate(-50%,-50%)}
+.selchip .mini .s-plus::after{width:2px;height:9px;transform:translate(-50%,-50%)}
 .item .have{border:0;background:transparent;color:var(--muted);font-size:16px;padding:2px 6px;flex:0 0 auto}
 .pantrycard h2{display:flex;align-items:center;gap:8px}
 .pantry-note{display:block;margin:-4px 0 6px}
