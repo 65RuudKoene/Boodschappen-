@@ -52,6 +52,11 @@ body.home-mode{background:#f5ead8}
 #homeView .h-top .h-week{font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 #homeView .h-greet{font-size:40px;line-height:1;margin:0;font-weight:800;letter-spacing:-.02em;color:var(--h-acc800)}
 #homeView .h-status{margin:10px 0 0;font-size:16px;line-height:1.5;color:var(--h-n700);max-width:300px;text-wrap:pretty}
+#homeView .h-nameprompt{display:flex;align-items:center;gap:8px;background:var(--h-surface);border-radius:999px;padding:6px 6px 6px 16px;margin:12px 0 0}
+#homeView .h-nameprompt input{flex:1;min-width:0;border:0;background:transparent;color:var(--h-n900);font-size:15px;padding:8px 0}
+#homeView .h-nameprompt input::placeholder{color:var(--h-n600)}
+#homeView .h-nameprompt-save{flex:0 0 auto;border:0;background:var(--h-acc700);color:var(--h-cream);font-weight:700;font-size:14px;padding:9px 16px;min-height:40px}
+#homeView .h-nameprompt-x{flex:0 0 auto;border:0;background:transparent;color:var(--h-n600);font-size:18px;line-height:1;padding:4px 6px;min-height:40px;min-width:40px}
 #homeView .h-doors{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 #homeView .h-door{border:0;padding:0;border-radius:28px;cursor:pointer;text-align:left;color:var(--h-text);min-height:214px;display:flex;flex-direction:column;overflow:hidden;transition:transform .12s ease,box-shadow .12s ease}
 #homeView .h-door:active{transform:translateY(3px)}
@@ -322,6 +327,11 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
   <div>
     <h2 class="h-greet" id="homeGreet">Hallo.</h2>
     <p class="h-status" id="homeStatus"></p>
+    <div id="homeNamePrompt" class="h-nameprompt hidden">
+      <input id="homeNameInput" type="text" inputmode="text" autocomplete="given-name" placeholder="Hoe mogen we je noemen?">
+      <button class="h-nameprompt-save" onclick="homeSaveName()">Opslaan</button>
+      <button class="h-nameprompt-x" onclick="homeDismissNamePrompt()" aria-label="Niet nu">×</button>
+    </div>
   </div>
 
   <div class="h-doors">
@@ -1401,7 +1411,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='36';
+const APP_VERSION='37';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
@@ -1503,6 +1513,22 @@ function homeGreeting(){
   const naam=(localStorage.getItem('user-name-v1')||'').trim();
   return naam ? base+', '+naam+'.' : base+'.';
 }
+/* Vraagt de naam één keer op het startscherm (voor wie al ingelogd was en het
+   inlogscherm dus niet meer ziet). Verdwijnt na opslaan of wegklikken en komt
+   daarna niet meer terug, ook niet als er geen naam is ingevuld. */
+function homeShouldAskName(){
+  return !(localStorage.getItem('user-name-v1')||'').trim() && !localStorage.getItem('name-prompt-seen-v1');
+}
+function homeSaveName(){
+  const v=(document.getElementById('homeNameInput').value||'').trim();
+  if(v) localStorage.setItem('user-name-v1',v);
+  localStorage.setItem('name-prompt-seen-v1','1');
+  refreshHome();
+}
+function homeDismissNamePrompt(){
+  localStorage.setItem('name-prompt-seen-v1','1');
+  refreshHome();
+}
 const HOME_DOOR_IMAGE='images/home-recepten.webp';
 let homeSuggestionId=null;
 function homeSuggestion(){
@@ -1547,6 +1573,8 @@ function refreshHome(){
   const set=(id,txt)=>{ const el=document.getElementById(id); if(el) el.textContent=txt; };
 
   set('homeGreet',homeGreeting());
+  const npEl=document.getElementById('homeNamePrompt');
+  if(npEl) npEl.classList.toggle('hidden',!homeShouldAskName());
   set('homeClock',new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}));
   set('homeWeekTag','Week '+now.week+' \u00b7 deze week');
 
@@ -1597,6 +1625,7 @@ renderPhotoThumbs();
 document.getElementById('loginBtn').onclick=function(){ const nm=document.getElementById('loginName').value.trim(); if(nm) localStorage.setItem('user-name-v1',nm); doLogin(document.getElementById('loginPass').value); };
 document.getElementById('loginPass').addEventListener('keydown',function(e){ if(e.key==='Enter'){ const nm=document.getElementById('loginName').value.trim(); if(nm) localStorage.setItem('user-name-v1',nm); doLogin(document.getElementById('loginPass').value); } });
 (function(){ const nf=document.getElementById('yourNameField'); nf.value=localStorage.getItem('user-name-v1')||''; nf.addEventListener('change',()=>{ const v=nf.value.trim(); if(v) localStorage.setItem('user-name-v1',v); else localStorage.removeItem('user-name-v1'); refreshHome(); }); })();
+document.getElementById('homeNameInput').addEventListener('keydown',function(e){ if(e.key==='Enter') homeSaveName(); });
 document.getElementById('logoutBtn').onclick=function(){ if(confirm('Uitloggen op dit toestel? Je gedeelde lijst blijft bestaan en komt terug zodra je opnieuw inlogt met hetzelfde wachtwoord.')) doLogout(); };
 document.getElementById('changePassBtn').onclick=async function(){
   const np=prompt('Nieuw gedeeld wachtwoord.\nVul dit op álle toestellen hetzelfde in:');
