@@ -297,6 +297,8 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
 .stepper{background:var(--bg);border:0}
 .stepper button{box-shadow:none;min-height:34px}
 .stepper button:active{transform:none;box-shadow:none}
+.selchip .mini button{box-shadow:none;min-height:26px}
+.selchip .mini button:active{transform:none;box-shadow:none}
 .recipe-head-main{background:transparent;box-shadow:none;min-height:auto}
 .recipe-head-main:active{transform:none;box-shadow:none}
 .meal-badge,.src{color:var(--terra)}
@@ -749,7 +751,7 @@ function startNewRound(key){
 function chipHtml(id,key){
   const r=recipeById[id]; if(!r) return '';
   const s=getWeekServings(key,id);
-  return '<span class="selchip"><button class="sc-open" data-id="'+id+'">'+r.emoji+' '+r.title+'</button><span class="mini"><button class="s-minus" data-id="'+id+'" aria-label="Minder personen">−</button><span class="n">'+s+'p</span><button class="s-plus" data-id="'+id+'" aria-label="Meer personen">+</button></span><button class="sc-x" data-id="'+id+'" aria-label="Uit de week halen">✕</button></span>';
+  return '<span class="selchip"><button class="sc-open" data-id="'+id+'">'+r.emoji+' '+r.title+'</button><span class="mini"><button class="s-minus" data-id="'+id+'" aria-label="Minder personen"></button><span class="n">'+s+'p</span><button class="s-plus" data-id="'+id+'" aria-label="Meer personen"></button></span><button class="sc-x" data-id="'+id+'" aria-label="Uit de week halen">✕</button></span>';
 }
 function renderSel(key){
   const el=document.getElementById('selRecipes'), ids=plannerWeeks[key]||[];
@@ -1190,7 +1192,7 @@ function renderRecipes(){
     const body=document.createElement('div'); body.className='body';
     let cardServ=BASE_SERV;
     body.innerHTML='<div class="badge"><span class="servTxt">'+servLabel(cardServ)+'</span></div>'+
-      '<div class="serv"><span class="lbl">Aantal personen</span><span class="stepper"><button class="minus" aria-label="Minder personen">−</button><span class="cnt">'+servLabel(cardServ)+'</span><button class="plus" aria-label="Meer personen">+</button></span></div>'+
+      '<div class="serv"><span class="lbl">Aantal personen</span><span class="stepper"><button class="minus" aria-label="Minder personen"></button><span class="cnt">'+servLabel(cardServ)+'</span><button class="plus" aria-label="Meer personen"></button></span></div>'+
       '<div class="badge serv-note">Alleen om te bekijken. Voor de boodschappenlijst stel je het aantal personen per week in.</div>'+
       '<h3>Ingrediënten</h3><ul class="ingList">'+r.ing.map(g=>'<li>'+ingText(scaleGroup(g,cardServ))+'</li>').join('')+'</ul>'+
       '<h3>Bereiding</h3><ol class="stepList">'+scaleSteps(r,cardServ).map(x=>'<li>'+x+'</li>').join('')+'</ol>'+
