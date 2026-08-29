@@ -646,8 +646,9 @@ function buildShopping(key,ids){
   ids.forEach(id=>{ const r=recipeById[id]; if(!r) return;
     const s=getWeekServings(key,id);
     r.ing.forEach(g=>{
-      if(pantry.includes(g.n)) return;
-      const k=g.c+'|'+g.n+'|'+g.u;
+      const nameKey=g.n.trim().toLowerCase();
+      if(pantry.some(p=>p.trim().toLowerCase()===nameKey)) return;
+      const k=g.c+'|'+nameKey+'|'+g.u;
       if(!map[k]){ map[k]={q:0,u:g.u,n:g.n,c:g.c,hasNum:false}; order.push(k); }
       if(g.q!=null){ map[k].q+=g.q*s/BASE_SERV; map[k].hasNum=true; }
     });
