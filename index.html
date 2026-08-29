@@ -13,8 +13,7 @@
 <link rel="icon" href="icon-192.png" type="image/png">
 <title>Boodschappen & Recepten</title>
 <style>
-:root { color-scheme: light dark; --bg:#f5f5f7; --card:#fff; --text:#111; --muted:#666; --line:#ddd; --accent:#34c759; --accent-2:#0a84ff; }
-@media (prefers-color-scheme: dark) { :root{--bg:#111;--card:#1c1c1e;--text:#f5f5f7;--muted:#aaa;--line:#333;} }
+:root { color-scheme: light; --bg:#f5ead8; --card:#f9f4ed; --surface:#ebddc5; --text:#201e1d; --muted:#82796a; --line:rgba(32,30,29,.16); --line-strong:#c0b6a5; --accent:#c67139; --accent-2:#8c491a; --terra:#8c491a; --terra-dark:#402310; --sage:#728157; --sage-dark:#3d472b; --sage-100:#f0fae1; --sage-200:#e1eecc; --sage-400:#aebf92; --cream:#fff2eb; }
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);padding-bottom:calc(24px + env(safe-area-inset-bottom))}
 header{position:sticky;top:0;background:var(--bg);padding:16px 16px 10px;z-index:3;display:flex;align-items:center;gap:10px}
@@ -39,6 +38,61 @@ h2{font-size:18px;margin:2px 0 10px}
 #homeView .tile:nth-of-type(1) .emoji{background:color-mix(in srgb,#ff9f0a 18%,var(--card))}
 #homeView .tile:nth-of-type(2) .emoji{background:color-mix(in srgb,var(--accent) 18%,var(--card))}
 
+/* ---------- STARTPAGINA (warme, eigen stijl; los van de rest van de app) ---------- */
+body.home-mode{background:#f5ead8}
+#homeView{
+  --h-bg:#f5ead8;--h-surface:#ebddc5;--h-text:#201e1d;--h-n300:#dcd3c4;--h-n400:#c0b6a5;
+  --h-n600:#82796a;--h-n700:#645c50;--h-n900:#2e2b25;--h-acc:#c67139;--h-acc700:#8c491a;
+  --h-acc800:#643312;--h-acc900:#402310;--h-sage200:#e1eecc;--h-sage300:#ccdbb2;--h-sage400:#aebf92;
+  --h-sage500:#8fa073;--h-sage600:#728157;--h-sage800:#3d472b;--h-sage900:#272e1b;--h-cream:#fff2eb;
+  color:var(--h-text);padding:calc(18px + env(safe-area-inset-top)) 4px 8px;display:flex;flex-direction:column;gap:22px
+}
+#homeView .h-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--h-n600)}
+#homeView .h-top .h-clock{font-weight:700}
+#homeView .h-top .h-week{font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+#homeView .h-greet{font-size:40px;line-height:1;margin:0;font-weight:800;letter-spacing:-.02em;color:var(--h-acc800)}
+#homeView .h-status{margin:10px 0 0;font-size:16px;line-height:1.5;color:var(--h-n700);max-width:300px;text-wrap:pretty}
+#homeView .h-doors{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#homeView .h-door{border:0;padding:0;border-radius:28px;cursor:pointer;text-align:left;color:var(--h-text);min-height:214px;display:flex;flex-direction:column;overflow:hidden;transition:transform .12s ease,box-shadow .12s ease}
+#homeView .h-door:active{transform:translateY(3px)}
+#homeView .h-door-recipes{background:var(--h-surface);box-shadow:0 5px 0 var(--h-n400)}
+#homeView .h-door-recipes:active{box-shadow:0 2px 0 var(--h-n400)}
+#homeView .h-photo{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--h1,#c0b6a5),var(--h2,#82796a))}
+#homeView .h-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(.6) contrast(.85) brightness(1.1) opacity(.94)}
+#homeView .h-ph{line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))}
+#homeView .h-photo-door{width:100%;height:112px;flex:0 0 112px}
+#homeView .h-photo-door .h-ph{font-size:46px}
+#homeView .h-photo-sq{width:84px;height:84px;flex:0 0 84px;border-radius:16px}
+#homeView .h-photo-sq .h-ph{font-size:38px}
+#homeView .h-door-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px}
+#homeView .h-door-title{font-size:22px;font-weight:800;line-height:1;letter-spacing:-.01em;color:var(--h-n900)}
+#homeView .h-door-meta{font-size:13px;line-height:1.35;color:var(--h-n700)}
+#homeView .h-door-shop{background:var(--h-sage300);box-shadow:0 5px 0 var(--h-sage500);justify-content:space-between;padding:16px}
+#homeView .h-door-shop:active{box-shadow:0 2px 0 var(--h-sage500)}
+#homeView .h-ring{width:66px;height:66px;border-radius:999px;background:#f0fae1;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:800;color:var(--h-sage800)}
+#homeView .h-door-shop .h-door-title{color:var(--h-sage900)}
+#homeView .h-door-shop .h-door-meta{color:var(--h-sage900)}
+#homeView .h-section-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--h-acc700);margin-bottom:10px;display:block}
+#homeView .h-shortcuts{display:flex;flex-direction:column;gap:10px}
+#homeView .h-sc{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:0;border-radius:999px;padding:14px 20px;min-height:52px;font-size:15px;cursor:pointer;transition:transform .12s ease,filter .12s ease}
+#homeView .h-sc:active{transform:translateY(2px);filter:brightness(.94)}
+#homeView .h-sc .h-sc-label{flex:1;min-width:0}
+#homeView .h-sc .h-sc-meta{font-size:13px;opacity:.7}
+#homeView .h-sc-sand{background:var(--h-surface);color:var(--h-n900);box-shadow:0 3px 0 var(--h-n400)}
+#homeView .h-sc-sand:active{box-shadow:0 1px 0 var(--h-n400)}
+#homeView .h-sc-sage{background:var(--h-sage200);color:var(--h-sage900);box-shadow:0 3px 0 var(--h-sage400)}
+#homeView .h-sc-sage:active{box-shadow:0 1px 0 var(--h-sage400)}
+#homeView .h-suggest{display:flex;align-items:center;gap:16px;background:var(--h-acc700);box-shadow:0 5px 0 var(--h-acc900);border-radius:28px;padding:16px}
+#homeView .h-suggest-body{min-width:0;display:flex;flex-direction:column;gap:4px}
+#homeView .h-suggest-title{font-size:17px;font-weight:800;color:var(--h-cream)}
+#homeView .h-suggest-sub{font-size:14px;color:var(--h-cream)}
+#homeView .h-suggest-btn{align-self:flex-start;margin-top:4px;border:0;border-radius:999px;background:rgba(255,242,235,.2);color:var(--h-cream);font-size:14px;font-weight:700;padding:10px 16px;min-height:44px;cursor:pointer}
+#homeView .h-suggest-btn:active{background:rgba(255,242,235,.32)}
+#homeView .h-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid rgba(32,30,29,.16);padding-top:14px}
+#homeView .h-foot-sync{border:0;background:transparent;color:var(--h-n700);font-size:13px;padding:0;min-height:44px;text-align:left;cursor:pointer}
+#homeView .h-dot{width:9px;height:9px;border-radius:999px;background:var(--h-sage600);flex:0 0 9px}
+#homeView #homeVer{text-align:center;color:var(--h-n600);opacity:.75;padding-bottom:6px}
+
 .item{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
 .item:last-child{border-bottom:none}
 .item input{width:23px;height:23px;margin-top:0;accent-color:var(--accent)}
@@ -58,8 +112,8 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .pick-item span{flex:1;min-width:0}
 .pick-fav{flex:0 0 auto;margin-left:auto;border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;padding:4px 2px}
 .pick-fav.active{color:#ffcc00}
-.selchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
-.selchip{display:inline-flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 2px 2px 4px;font-size:13px}
+.selchips{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+.selchip{display:flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 2px 2px 4px;font-size:13px;width:100%}
 .linkbtn.newround{color:var(--accent)}
 .round-section{margin:10px 0}
 .round-head{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;cursor:pointer;background:var(--card);border-radius:16px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
@@ -108,6 +162,8 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .pick-round-label{font-size:13px;color:var(--muted);white-space:nowrap;align-self:center;flex:0 0 auto}
 
 .confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,12px);max-width:calc(100% - 32px);background:var(--terra-dark);color:var(--cream);font-size:14px;font-weight:600;line-height:1.4;text-align:center;border-radius:999px;padding:14px 22px;box-shadow:0 8px 20px rgba(32,30,29,.28);z-index:9999;opacity:0;transition:opacity .2s ease,transform .2s ease}
+.toast.show{opacity:1;transform:translate(-50%,0)}
 .confetti-piece{position:absolute;width:8px;height:8px;border-radius:2px;margin:-4px 0 0 -4px;opacity:1;animation:confetti-burst .9s ease-out forwards}
 @keyframes confetti-burst{
   0%{transform:translate(0,0) scale(1);opacity:1}
@@ -136,7 +192,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .stepper button{width:34px;height:34px;border-radius:999px;background:var(--card);color:var(--text);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .stepper button:disabled{opacity:.35;box-shadow:none}
 .stepper .cnt{min-width:96px;text-align:center;font-size:14px;font-weight:600}
-.selchip .mini{display:inline-flex;align-items:center;gap:1px;margin:0 2px}
+.selchip .mini{display:inline-flex;align-items:center;gap:1px;margin:0 2px;flex:0 0 auto}
 .selchip .mini button{width:26px;height:26px;border-radius:999px;background:var(--bg);color:var(--text);font-size:17px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center}
 .selchip .mini .n{min-width:22px;text-align:center;font-size:12px;font-weight:700;color:var(--muted)}
 .item .have{border:0;background:transparent;color:var(--muted);font-size:16px;padding:2px 6px;flex:0 0 auto}
@@ -173,6 +229,63 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .login-card input{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:12px;padding:12px 14px;font-size:16px;margin-bottom:10px}
 .login-card .actionbtn{width:100%;padding:12px;font-size:16px}
 #loginMsg{display:block;margin-top:10px;min-height:16px}
+/* ===== Warme huisstijl (crème) voor de hele app ===== */
+h1{font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--muted)}
+.card{background:var(--card);border-radius:24px;box-shadow:0 2px 0 rgba(32,30,29,.10);padding:16px}
+#shoppingView .card h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--terra);margin:2px 0 10px}
+#shoppingView .pantrycard h2,#syncView .card h2,#addView .card h2{font-size:20px;letter-spacing:-.01em;text-transform:none;color:var(--text);margin:2px 0 8px}
+button{border-radius:999px;min-height:44px;background:var(--surface);color:var(--text);box-shadow:0 3px 0 var(--line-strong);transition:transform .12s ease,box-shadow .12s ease}
+button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
+.actionbtn{background:var(--terra);color:var(--cream);font-weight:700;box-shadow:0 4px 0 var(--terra-dark)}
+.actionbtn:active{box-shadow:0 2px 0 var(--terra-dark)}
+.pickbtn{background:var(--sage);color:var(--sage-100);border-radius:999px;box-shadow:0 4px 0 var(--sage-dark);margin:10px 0 0}
+.pickbtn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--sage-dark)}
+.pickbtn.open{background:var(--card);color:var(--text);border:0;box-shadow:0 3px 0 var(--line-strong)}
+.pickbtn.secondary{background:var(--surface);color:var(--h-n900,var(--text));box-shadow:0 4px 0 var(--line-strong)}
+.pickbtn.secondary:active{transform:translateY(2px);box-shadow:0 2px 0 var(--line-strong)}
+.chip{background:var(--card);border:0;box-shadow:0 2px 0 var(--line-strong);min-height:40px}
+.chip.active{background:var(--accent);color:var(--cream);box-shadow:0 2px 0 var(--terra)}
+.weekbar{background:var(--sage-200);border-radius:999px;padding:6px;box-shadow:0 3px 0 var(--sage-400);margin:10px 0 12px}
+.weekbar .wk{font-size:16px;font-weight:800;color:#272e1b}
+.weekbar .arrow{background:var(--sage-100);width:44px;height:44px;min-height:44px;box-shadow:none;color:var(--sage-dark)}
+.weekbar .arrow:active{transform:none;box-shadow:none;background:var(--sage-400)}
+.thisweek{background:var(--sage);color:var(--sage-100);border-radius:999px;padding:3px 9px}
+.shopprog{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:999px;box-shadow:0 3px 0 var(--line-strong);padding:12px 18px;margin:0 0 12px}
+.shopprog .txt{font-size:14px;font-weight:800;color:var(--sage-dark);white-space:nowrap}
+.shopprog .bar{flex:1;height:10px;border-radius:999px;background:#dcd3c4;overflow:hidden}
+.shopprog .bar span{display:block;height:100%;border-radius:999px;background:var(--sage);transition:width .2s ease}
+.item{padding:12px 0;align-items:center}
+.item input{width:26px;height:26px;accent-color:var(--sage)}
+.item .lab{font-size:16px}
+.selchip{background:var(--bg);border:0;box-shadow:0 2px 0 var(--line-strong);padding:4px 4px 4px 10px;width:100%}
+.sc-open{color:var(--terra);font-weight:700;flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.round-head{background:var(--sage-200);border-radius:24px;box-shadow:0 3px 0 var(--sage-400);padding:16px}
+.round-head:active{transform:translateY(2px);box-shadow:0 1px 0 var(--sage-400)}
+.round-head-title{font-size:17px;font-weight:800;color:#272e1b}
+.round-head-sub{color:var(--sage-dark)}
+.round-head .chev{color:var(--sage-dark)}
+.search input,.additem input,.additem select{border-radius:999px;border:1px solid var(--line);background:var(--card);min-height:46px}
+.additem{gap:10px}
+.additem button{background:var(--terra);color:var(--cream);box-shadow:0 3px 0 var(--terra-dark)}
+.pantrycard{background:var(--sage-100)}
+.pantrycard h2{color:var(--sage-dark)}
+.linkbtn,.del,.have,.pick-fav,.sc-x,.sc-open,.clr,.rmrecipe,.recipe-fav,.synclink,.photo-thumbs .th button{background:transparent;box-shadow:none;min-height:auto}
+.linkbtn:active,.del:active,.have:active,.pick-fav:active,.sc-x:active,.sc-open:active,.clr:active,.rmrecipe:active,.recipe-fav:active,.synclink:active,.photo-thumbs .th button:active{transform:none;box-shadow:none}
+.photo-thumbs .th button{background:rgba(0,0,0,.65);color:#fff}
+.linkbtn{color:var(--terra);font-weight:700}
+.linkbtn.newround{color:var(--sage-dark)}
+.back{background:var(--card);color:var(--terra);box-shadow:0 3px 0 var(--line-strong)}
+.back:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
+.surprise{border-radius:999px;background:var(--card);box-shadow:0 3px 0 var(--line-strong);font-weight:700}
+.surprise:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
+.stepper{background:var(--bg);border:0}
+.stepper button{box-shadow:none;min-height:34px}
+.stepper button:active{transform:none;box-shadow:none}
+.recipe-head-main{background:transparent;box-shadow:none;min-height:auto}
+.recipe-head-main:active{transform:none;box-shadow:none}
+.meal-badge,.src{color:var(--terra)}
+.controls{gap:10px;margin:2px 0 10px}
 </style>
 </head>
 <body>
@@ -183,6 +296,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <h2>Boodschappen &amp; Recepten</h2>
     <p class="login-sub">Log in met het gedeelde wachtwoord.</p>
     <input id="loginPass" type="password" inputmode="text" autocomplete="current-password" placeholder="Wachtwoord">
+    <input id="loginName" type="text" inputmode="text" autocomplete="given-name" placeholder="Jouw naam (optioneel)">
     <button id="loginBtn" class="actionbtn">Inloggen</button>
     <div id="loginMsg" class="badge"></div>
     <div id="appVer" class="badge" style="margin-top:14px;opacity:.6"></div>
@@ -200,18 +314,64 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 <main>
 
 <section id="homeView">
-  <button class="tile" onclick="showTab('recipes')">
-    <span class="emoji">🍳</span>
-    <span class="t-wrap"><span class="t-main">Recepten</span><span class="t-sub" id="homeRecipeSub"></span></span>
-    <span class="chev">›</span>
-  </button>
-  <button class="tile" onclick="showTab('shop')">
-    <span class="emoji">🛒</span>
-    <span class="t-wrap"><span class="t-main">Boodschappen</span><span class="t-sub" id="homeShopSub"></span></span>
-    <span class="chev">›</span>
-  </button>
-  <button class="synclink" id="syncLink" onclick="showSync()">⚙️ Samen delen</button>
-  <div id="homeVer" class="badge" style="text-align:center;margin-top:6px;opacity:.55"></div>
+  <div class="h-top">
+    <span class="h-clock" id="homeClock"></span>
+    <span class="h-week" id="homeWeekTag"></span>
+  </div>
+
+  <div>
+    <h2 class="h-greet" id="homeGreet">Hallo.</h2>
+    <p class="h-status" id="homeStatus"></p>
+  </div>
+
+  <div class="h-doors">
+    <button class="h-door h-door-recipes" onclick="showTab('recipes')">
+      <span class="h-photo h-photo-door" id="homeDoorPhoto">
+        <img id="homeDoorImg" alt="" referrerpolicy="no-referrer">
+        <span class="h-ph" id="homeDoorPh">🍽️</span>
+      </span>
+      <span class="h-door-body">
+        <span class="h-door-title">Recepten</span>
+        <span class="h-door-meta" id="homeRecipeMeta"></span>
+      </span>
+    </button>
+    <button class="h-door h-door-shop" onclick="showTab('shop')">
+      <span class="h-ring" id="homeRing">0%</span>
+      <span class="h-door-body" style="padding:0">
+        <span class="h-door-title">Boodschappen</span>
+        <span class="h-door-meta" id="homeShopMeta"></span>
+      </span>
+    </button>
+  </div>
+
+  <div>
+    <span class="h-section-label">Snel verder</span>
+    <div class="h-shortcuts">
+      <button class="h-sc h-sc-sand" onclick="homeGoPick()"><span class="h-sc-label" id="homeScPickLabel">Recepten kiezen</span><span class="h-sc-meta" id="homeScPickMeta"></span></button>
+      <button class="h-sc h-sc-sage" onclick="homeGoRound()"><span class="h-sc-label">Nieuwe ronde starten</span><span class="h-sc-meta" id="homeScRoundMeta"></span></button>
+      <button class="h-sc h-sc-sand" onclick="shareList(homeWeekKey())"><span class="h-sc-label">Lijst delen</span><span class="h-sc-meta"></span></button>
+      <button class="h-sc h-sc-sage" onclick="homeGoPantry()"><span class="h-sc-label">Voorraadkast</span><span class="h-sc-meta" id="homeScPantryMeta"></span></button>
+      <button class="h-sc h-sc-sand" onclick="showAdd()"><span class="h-sc-label">Recept toevoegen met AI</span><span class="h-sc-meta">link of foto</span></button>
+    </div>
+  </div>
+
+  <div class="h-suggest">
+    <span class="h-photo h-photo-sq" id="homeSuggestPhoto">
+      <img id="homeSuggestImg" alt="" referrerpolicy="no-referrer">
+      <span class="h-ph" id="homeSuggestPh">🍽️</span>
+    </span>
+    <div class="h-suggest-body">
+      <span class="h-suggest-title">Wat eten we vandaag?</span>
+      <span class="h-suggest-sub" id="homeSuggestSub"></span>
+      <button class="h-suggest-btn" onclick="rerollSuggestion()">Geef me een ander ↻</button>
+    </div>
+  </div>
+
+  <div class="h-foot">
+    <button class="h-foot-sync" id="syncLink" onclick="showSync()">Samen delen</button>
+    <span class="h-dot"></span>
+  </div>
+  <div id="homeVer" class="badge"></div>
 </section>
 
 <section id="syncView" class="hidden">
@@ -220,6 +380,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <div class="badge serv-note" id="syncInfo"></div>
     <div class="badge serv-note">Iemand anders geeft je hetzelfde wachtwoord in op zijn telefoon en jullie delen dezelfde lijst, weekplanning en voorraad — live.</div>
     <button id="changePassBtn" class="linkbtn" style="padding:8px 0">Wachtwoord wijzigen</button>
+    <div class="synced-field"><label for="yourNameField">Jouw naam</label><input id="yourNameField" type="text" inputmode="text" autocomplete="given-name" placeholder="Bijv. Ruud"></div>
     <button id="logoutBtn" class="actionbtn">Uitloggen</button>
   </div>
 </section>
@@ -230,11 +391,15 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
     <span class="wk" id="weekLabel"></span>
     <button class="arrow" onclick="navWeek(1)">›</button>
   </div>
+  <div class="shopprog hidden" id="shopProg">
+    <span class="txt" id="shopProgTxt"></span>
+    <span class="bar"><span id="shopProgBar" style="width:0%"></span></span>
+  </div>
   <div class="card">
     <div id="selRecipes"></div>
-    <button class="linkbtn newround hidden" id="newRoundBtn" onclick="startNewRound(curKey())">↻ Nieuwe ronde starten</button>
-    <button class="linkbtn copyweek hidden" id="copyWeekBtn" onclick="copyPrevWeek()"></button>
     <button class="pickbtn" id="pickBtn" onclick="togglePicker()">🍽️ Recepten kiezen</button>
+    <button class="pickbtn secondary hidden" id="newRoundBtn" onclick="startNewRound(curKey())">↻ Nieuwe ronde starten</button>
+    <button class="pickbtn secondary hidden" id="copyWeekBtn" onclick="copyPrevWeek()"></button>
     <div id="picker" class="picker hidden">
       <div class="search">
         <input id="pickSearch" type="search" inputmode="search" placeholder="Zoek recept of ingrediënt…" autocomplete="off">
@@ -482,6 +647,15 @@ function renderWeekbar(){
   if(src.length){ cw.classList.remove('hidden'); cw.textContent='↩︎ Kopieer vorige week ('+src.length+' recept'+(src.length>1?'en':'')+')'; }
   else cw.classList.add('hidden');
 }
+function renderShopProgress(){
+  const el=document.getElementById('shopProg');
+  if(!el) return;
+  const p=weekProgress(curKey());
+  if(!p.total){ el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  document.getElementById('shopProgTxt').textContent=p.checked+' / '+p.total+' gehaald';
+  document.getElementById('shopProgBar').style.width=Math.round(p.checked/p.total*100)+'%';
+}
 function renderShopping(){
   const key=curKey();
   pickerOpen=false;
@@ -489,12 +663,14 @@ function renderShopping(){
   const pickBtn=document.getElementById('pickBtn'); pickBtn.textContent='🍽️ Recepten kiezen'; pickBtn.classList.remove('open');
   renderWeekbar();
   renderSel(key); renderPicker(key); renderShopWrap(key);
+  renderShopProgress();
 }
 /* Lichte ververs die het keuzemenu open laat (voor live-updates). */
 function refreshShopping(){
   const key=curKey();
   renderWeekbar();
   renderSel(key); renderShopWrap(key);
+  renderShopProgress();
   if(pickerOpen) renderPickList(key);
 }
 function navWeek(dir){ viewDate=shiftWeek(viewDate,dir); renderShopping(); }
@@ -682,6 +858,15 @@ function initPickSearch(){
 }
 
 /* ---------- VIEREN: vuurwerkje bij een complete ronde ---------- */
+let toastTimer=null;
+function showToast(msg){
+  let el=document.getElementById('appToast');
+  if(!el){ el=document.createElement('div'); el.id='appToast'; el.className='toast'; document.body.appendChild(el); }
+  el.textContent=msg;
+  clearTimeout(toastTimer);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2600);
+}
 function celebrateRoundComplete(){
   if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const layer=document.createElement('div'); layer.className='confetti-layer';
@@ -735,6 +920,7 @@ function renderShopWrap(key){
     cb.onchange=()=>{
       checks[skey]=cb.checked; saveChecks();
       row.classList.toggle('done',cb.checked);
+      renderShopProgress();
       if(doneHidden&&cb.checked) row.style.display='none';
       if(opts.onToggle) opts.onToggle();
     };
@@ -816,7 +1002,7 @@ function renderShopWrap(key){
   wrap.appendChild(mcard);
 
   if(pantry.length){
-    const pcard=document.createElement('div'); pcard.className='card pantrycard';
+    const pcard=document.createElement('div'); pcard.className='card pantrycard'; pcard.id='pantryCard';
     const ph=document.createElement('h2'); ph.textContent='🏠 Heb ik in huis'; pcard.appendChild(ph);
     const note=document.createElement('div'); note.className='badge pantry-note'; note.textContent='Deze laat ik weg van je boodschappenlijst. Tik ✕ om er weer op te zetten.'; pcard.appendChild(note);
     pantry.slice().sort((a,b)=>a.localeCompare(b,'nl')).forEach(n=>{
@@ -872,9 +1058,9 @@ function buildShareText(key){
 }
 async function shareList(key){
   const text=buildShareText(key);
-  if(!text){ alert('Je lijst is nog leeg.'); return; }
+  if(!text){ showToast('Je lijst is nog leeg.'); return; }
   if(navigator.share){ try{ await navigator.share({title:'Boodschappen', text}); return; }catch(e){ if(e && e.name==='AbortError') return; } }
-  if(navigator.clipboard && navigator.clipboard.writeText){ try{ await navigator.clipboard.writeText(text); alert('Boodschappenlijst gekopieerd. Plak ’m waar je wilt.'); return; }catch(e){} }
+  if(navigator.clipboard && navigator.clipboard.writeText){ try{ await navigator.clipboard.writeText(text); showToast('Boodschappenlijst gekopieerd — plak ’m waar je wilt.'); return; }catch(e){} }
   prompt('Kopieer je boodschappenlijst:', text);
 }
 
@@ -1052,7 +1238,11 @@ function setHeader(view){
   if(view==='sync'){ t.textContent='Samen delen'; s.textContent='Deel je lijst live met een ander toestel.'; b.classList.remove('hidden'); }
   if(view==='add'){ t.textContent='Recept toevoegen'; s.textContent='Link of foto — de AI doet de rest.'; b.classList.remove('hidden'); }
 }
-function show(id){ ['homeView','shoppingView','recipesView','syncView','addView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id)); }
+function show(id){
+  ['homeView','shoppingView','recipesView','syncView','addView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id));
+  document.body.classList.toggle('home-mode',id==='homeView');
+  const h=document.querySelector('header'); if(h) h.classList.toggle('hidden',id==='homeView');
+}
 function goHome(){ backTarget=null; show('homeView'); setHeader('home'); refreshHome(); window.scrollTo(0,0); }
 /* Onthoudt waar je vandaan kwam als je een recept opende vanuit de boodschappenlijst (openRecipe),
    zodat 'Terug' je 1 stap terugbrengt in plaats van meteen helemaal naar het beginscherm. */
@@ -1295,18 +1485,118 @@ function doLogout(){
 }
 
 /* ---------- INIT ---------- */
+function homeWeekKey(){ return now.year+'-W'+now.week; }
+/* Voortgang van een week: alle items uit de rondes + zelf toegevoegde items. */
+function weekProgress(key){
+  const checks=checksAll[key]||{};
+  let total=0, checked=0;
+  weekRounds(key).filter(r=>r.recipeIds.length).forEach(round=>{
+    const cats=buildShopping(key,round.recipeIds);
+    CATS.forEach(([ck])=>{ (cats[ck]||[]).forEach(it=>{ total++; if(checks[round.id+'|'+it.c+'|'+it.n+'|'+it.u]) checked++; }); });
+  });
+  (manualAll[key]||[]).forEach(m=>{ total++; if(checks['m|'+m.id]) checked++; });
+  return {total:total, checked:checked};
+}
+function homeProgress(){ return weekProgress(homeWeekKey()); }
+function homeGreeting(){
+  const h=new Date().getHours(), base=h<6?'Goedenacht':(h<12?'Goedemorgen':(h<18?'Goedemiddag':'Goedenavond'));
+  const naam=(localStorage.getItem('user-name-v1')||'').trim();
+  return naam ? base+', '+naam+'.' : base+'.';
+}
+const HOME_DOOR_IMAGE='images/home-recepten.webp';
+let homeSuggestionId=null;
+function homeSuggestion(){
+  const list=allRecipes();
+  if(!list.length) return null;
+  let r=homeSuggestionId?recipeById[homeSuggestionId]:null;
+  if(!r){ r=list[Math.floor(Math.random()*list.length)]; homeSuggestionId=r.id; }
+  return r;
+}
+function rerollSuggestion(){
+  const list=allRecipes();
+  if(!list.length) return;
+  let r=list[Math.floor(Math.random()*list.length)], guard=0;
+  while(list.length>1 && r.id===homeSuggestionId && guard++<25) r=list[Math.floor(Math.random()*list.length)];
+  homeSuggestionId=r.id;
+  refreshHome();
+}
+/* Zelfde vangnet als bij de receptkaarten: kleurverloop op basis van de titel met de emoji erop,
+   en de foto er alleen overheen als die er is. */
+function homeSetPhoto(wrapId,imgId,phId,r){
+  const wrap=document.getElementById(wrapId), img=document.getElementById(imgId), ph=document.getElementById(phId);
+  if(!wrap||!img) return;
+  if(!r){ img.removeAttribute('src'); if(ph) ph.textContent='\ud83c\udf7d\ufe0f'; return; }
+  const hh=hues(r.title);
+  wrap.style.setProperty('--h1','hsl('+hh[0]+' 40% 62%)');
+  wrap.style.setProperty('--h2','hsl('+hh[1]+' 40% 46%)');
+  if(ph) ph.textContent=r.emoji||'\ud83c\udf7d\ufe0f';
+  img.alt=r.title;
+  img.onerror=function(){ this.removeAttribute('src'); };
+  img.src=r.image?r.image:'images/'+r.id+'.jpg';
+}
+function homeGoPick(){ showTab('shop'); togglePicker(); }
+function homeGoPantry(){
+  showTab('shop');
+  requestAnimationFrame(()=>{
+    const el=document.getElementById('pantryCard');
+    if(el) window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 16);
+  });
+}function homeGoRound(){ showTab('shop'); startNewRound(curKey()); }
 function refreshHome(){
-  const ck=now.year+'-W'+now.week, n=(plannerWeeks[ck]||[]).length;
-  document.getElementById('homeShopSub').textContent='Week '+now.week+' · '+now.year+(n?' · '+n+' recept'+(n>1?'en':''):'');
-  document.getElementById('homeRecipeSub').textContent=allRecipes().length+' recepten';
-  const sl=document.getElementById('syncLink'); if(sl) sl.textContent=(sb&&syncCfg)?'🔗 Gedeeld — samen delen':'⚙️ Samen delen';
+  const key=homeWeekKey(), n=(plannerWeeks[key]||[]).length, p=homeProgress(), open=p.total-p.checked;
+  const set=(id,txt)=>{ const el=document.getElementById(id); if(el) el.textContent=txt; };
+
+  set('homeGreet',homeGreeting());
+  set('homeClock',new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}));
+  set('homeWeekTag','Week '+now.week+' \u00b7 deze week');
+
+  let status;
+  if(!n) status='Nog geen recepten gekozen voor deze week. Kies er een paar, dan stel ik de lijst samen.';
+  else if(!p.total) status='Er '+(n===1?'staat':'staan')+' '+n+' recept'+(n>1?'en':'')+' in de planning; de lijst is nog leeg.';
+  else if(!open) status='Alles gehaald \u2014 '+p.total+' van '+p.total+' afgestreept. Mooi werk.';
+  else status='Er '+(n===1?'staat':'staan')+' '+n+' recept'+(n>1?'en':'')+' in de planning en er '+(open===1?'is':'zijn')+' nog '+open+' boodschap'+(open>1?'pen':'')+' te halen.';
+  set('homeStatus',status);
+
+  set('homeRecipeMeta',allRecipes().length+' recepten');
+  const favEl=document.getElementById('homeRecipeMeta');
+  if(favEl) favEl.innerHTML=allRecipes().length+' recepten<br>'+favoriteRecipes.length+' favoriet'+(favoriteRecipes.length===1?'':'en');
+
+  const pct=p.total?Math.round(p.checked/p.total*100):0;
+  set('homeRing',pct+'%');
+  const shopEl=document.getElementById('homeShopMeta');
+  if(shopEl) shopEl.innerHTML=p.checked+' van '+p.total+' gehaald<br>'+n+' recept'+(n===1?'':'en')+' gekozen';
+
+  set('homeScPickLabel','Recepten kiezen voor week '+now.week);
+  set('homeScPickMeta',n?n+' gekozen':'nog niets');
+  const rounds=weekRounds(key).filter(r=>r.recipeIds.length);
+  const openRound=openRoundOf(key);
+  set('homeScRoundMeta',rounds.length?('ronde '+rounds.length+(openRound&&openRound.recipeIds.length?' actief':' afgerond')):'geen ronde');
+  set('homeScPantryMeta',pantry.length?pantry.length+' in huis':'leeg');
+
+  const sug=homeSuggestion();
+  homeSetPhoto('homeSuggestPhoto','homeSuggestImg','homeSuggestPh',sug);
+  /* Vaste foto op de Recepten-deur, zodat die niet meewisselt met het voorstel. */
+  const door=document.getElementById('homeDoorPhoto'), doorImg=document.getElementById('homeDoorImg'), doorPh=document.getElementById('homeDoorPh');
+  if(door&&doorImg){
+    door.style.setProperty('--h1','hsl(96 34% 58%)');
+    door.style.setProperty('--h2','hsl(136 34% 42%)');
+    if(doorPh) doorPh.textContent='\ud83e\udd57';
+    doorImg.alt='Recepten';
+    doorImg.onerror=function(){ this.removeAttribute('src'); };
+    doorImg.src=HOME_DOOR_IMAGE;
+  }
+  set('homeSuggestSub',sug?(sug.title+(sug.time?' \u00b7 '+sug.time:'')):'Voeg eerst een recept toe.');
+
+  const sl=document.getElementById('syncLink');
+  if(sl) sl.textContent=(sb&&syncCfg)?'Samen delen \u00b7 live gedeeld':'Samen delen';
 }
 document.getElementById('addFetchBtn').onclick=fetchRecipe;
 document.getElementById('addPhotoInput').onchange=handlePhotoInput;
 document.querySelectorAll('#addModeChips .chip').forEach(function(b){ b.onclick=function(){ setAddMode(b.dataset.mode); }; });
 renderPhotoThumbs();
-document.getElementById('loginBtn').onclick=function(){ doLogin(document.getElementById('loginPass').value); };
-document.getElementById('loginPass').addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(document.getElementById('loginPass').value); });
+document.getElementById('loginBtn').onclick=function(){ const nm=document.getElementById('loginName').value.trim(); if(nm) localStorage.setItem('user-name-v1',nm); doLogin(document.getElementById('loginPass').value); };
+document.getElementById('loginPass').addEventListener('keydown',function(e){ if(e.key==='Enter'){ const nm=document.getElementById('loginName').value.trim(); if(nm) localStorage.setItem('user-name-v1',nm); doLogin(document.getElementById('loginPass').value); } });
+(function(){ const nf=document.getElementById('yourNameField'); nf.value=localStorage.getItem('user-name-v1')||''; nf.addEventListener('change',()=>{ const v=nf.value.trim(); if(v) localStorage.setItem('user-name-v1',v); else localStorage.removeItem('user-name-v1'); refreshHome(); }); })();
 document.getElementById('logoutBtn').onclick=function(){ if(confirm('Uitloggen op dit toestel? Je gedeelde lijst blijft bestaan en komt terug zodra je opnieuw inlogt met hetzelfde wachtwoord.')) doLogout(); };
 document.getElementById('changePassBtn').onclick=async function(){
   const np=prompt('Nieuw gedeeld wachtwoord.\nVul dit op álle toestellen hetzelfde in:');
