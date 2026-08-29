@@ -1243,6 +1243,8 @@ function renderRecipes(){
     const ta=document.createElement('textarea'); ta.id='note-'+r.id; ta.placeholder='Bijv. lekker met extra knoflook…'; ta.value=recipeNotes[r.id]||'';
     ta.oninput=()=>{ const v=ta.value; if(v.trim()) recipeNotes[r.id]=v; else delete recipeNotes[r.id]; saveNotes(); };
     noteWrap.append(nl,ta); body.appendChild(noteWrap);
+    const editBtn=document.createElement('button'); editBtn.className='linkbtn'; editBtn.style.cssText='display:block;padding:8px 0'; editBtn.textContent='✏️ Titel wijzigen'; editBtn.onclick=(e)=>{ e.stopPropagation(); renameRecipe(r.id); };
+    body.appendChild(editBtn);
     const rm=document.createElement('button'); rm.className='rmrecipe'; rm.textContent='Verwijder recept'; rm.onclick=()=>deleteRecipe(r.id);
     body.appendChild(rm);
     const minus=body.querySelector('.minus'), plus=body.querySelector('.plus');
@@ -1273,6 +1275,18 @@ function surprise(){
   requestAnimationFrame(()=>{ const el=document.getElementById('recipe-'+r.id); if(el){ el.classList.add('expanded'); el.scrollIntoView({behavior:'smooth',block:'start'}); } });
 }
 
+function renameRecipe(id){
+  const r=recipeById[id]; if(!r) return;
+  const nt=prompt('Nieuwe titel voor dit recept:', r.title);
+  if(nt===null) return;
+  const t=nt.trim();
+  if(!t || t===r.title) return;
+  const idx=customRecipes.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  customRecipes[idx]=Object.assign({},customRecipes[idx],{title:t});
+  saveCustom(); rebuildIndex();
+  renderRecipes(); refreshHome();
+}
 function deleteRecipe(id){
   const r=recipeById[id];
   if(!confirm('"'+(r?r.title:'Dit recept')+'" verwijderen uit de app?')) return;
@@ -1451,6 +1465,7 @@ function confirmAddRecipe(){
     ing:r.ing.map(function(g){return {q:(g.q==null?null:g.q),u:g.u||'',n:g.n||'',c:(CATS.some(function(c){return c[0]===g.c;})?g.c:'voorraad')};}),
     steps:r.steps.slice() };
   if(r.image) rec.image=r.image;
+  else if(addMode==='photo' && addPhotos.length) rec.image=addPhotos[0].dataUrl;
   if(r.source) rec.source=r.source;
   customRecipes.push(rec); saveCustom(); rebuildIndex();
   previewRecipe=null;
@@ -1465,7 +1480,7 @@ function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='41';
+const APP_VERSION='42';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
