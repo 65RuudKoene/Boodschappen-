@@ -1,6 +1,7 @@
 // Supabase Edge Function: parse-recipe
 // Zet een recept om naar het app-format (2 personen) met de Claude API.
-// Werkt met OF een URL (leest de pagina) OF 1-4 foto's (leest de afbeelding via vision).
+// Werkt met OF een URL (leest de pagina) OF 1-4 foto's (leest de afbeelding via vision)
+// OF losse tekst (een zelf getypt/geplakt recept).
 //
 // Benodigde secret:  ANTHROPIC_API_KEY   (jouw Anthropic API-sleutel)
 // Auto-aanwezig:      SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
@@ -44,11 +45,13 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const url: string | undefined = body?.url;
     const images: Array<{ data: string; mediaType?: string }> | undefined = body?.images;
+    const text: string | undefined = body?.text;
     const household: string | undefined = body?.household;
 
     const hasUrl = typeof url === "string" && /^https?:\/\//i.test(url);
     const hasImages = Array.isArray(images) && images.length > 0;
-    if (!hasUrl && !hasImages) return json({ error: "Geen link of foto meegegeven" }, 400);
+    const hasText = typeof text === "string" && text.trim().length > 0;
+    if (!hasUrl && !hasImages && !hasText) return json({ error: "Geen link, foto of tekst meegegeven" }, 400);
 
     // Lichte toegangscontrole: de gedeelde code moet bestaan in de database
     // (dus iemand is ingelogd met het juiste wachtwoord). Bij twijfel: gewoon doorgaan.
@@ -83,6 +86,8 @@ Deno.serve(async (req) => {
       if (!blocks.length) return json({ error: "Geen bruikbare foto's ontvangen" }, 400);
       blocks.push({ type: "text", text: "Lees het recept op deze foto('s) (bijv. uit een kookboek of tijdschrift) en zet het om naar het gevraagde JSON-format." });
       userContent = blocks;
+    } else if (hasText) {
+      userContent = "Zelf getypt/geplakt recept van de gebruiker:\n\n" + text!.slice(0, 12000);
     } else {
       let html = "";
       try {
