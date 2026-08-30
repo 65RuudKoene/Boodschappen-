@@ -11,6 +11,10 @@ Supabase (tabel `app_kv` + Storage-bucket `recipe-photos` + Edge Function
 - **Back-up herstellen**: zie [`docs/BACKUP-RESTORE.md`](docs/BACKUP-RESTORE.md)
   voor de volledige procedure (en kant-en-klare SQL) om een oude back-up
   terug te zetten als er iets misgaat met de data.
+- **Testen vóór je mergt**: zie [`docs/TEST-CHECKLIST.md`](docs/TEST-CHECKLIST.md)
+  voor de handmatige regressie-checklist (er is geen geautomatiseerde
+  test-suite). Loop de relevante punten langs bij elke wijziging aan
+  `index.html`/`sw.js`/`parse-recipe`, en de hele lijst zo nu en dan.
 
 ## Hoe alles samenhangt
 
