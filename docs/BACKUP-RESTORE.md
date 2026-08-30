@@ -1,11 +1,15 @@
 # Backup herstellen
 
 Deze app bewaart alle gedeelde data (boodschappenlijst, recepten, planner, etc.)
-in de Supabase-tabel `app_kv`, met één rij per `household` + `k` (databundel-naam).
-Elke nacht om 04:05 UTC zet de GitHub Action `.github/workflows/backup-supabase.yml`
-een volledige export van die tabel weg in de privé-repo
-**`65RuudKoene/Backup-Supabase-boodschappen-`**, als
-`supabase/app_kv-JJJJ-MM-DD.json`. De laatste 90 dagen worden bewaard.
+in de Supabase-tabel `app_kv`, met één rij per `household` + `k` (databundel-naam),
+plus de recept-foto's in de Storage-bucket `recipe-photos`. Elke nacht om 04:05 UTC
+zet de GitHub Action `.github/workflows/backup-supabase.yml` beide weg in de
+privé-repo **`65RuudKoene/Backup-Supabase-boodschappen-`**:
+
+- een volledige export van `app_kv` als `supabase/app_kv-JJJJ-MM-DD.json`
+  (de laatste 90 dagen worden bewaard);
+- een spiegel van alle bestanden uit `recipe-photos` onder `supabase/photos/`
+  (geen historie per dag — dit is steeds de meest recente stand).
 
 Gebruik dit alleen als er echt iets fout is gegaan (data kwijt/corrupt) — het
 overschrijft de huidige data met een oudere versie.
@@ -81,7 +85,38 @@ set v = excluded.v, updated_at = excluded.updated_at;
 Vervang `PLAK_HIER_DE_HELE_JSON_ARRAY` door de inhoud die je in stap 1
 gekopieerd hebt (laat de aanhalingstekens `'...'` eromheen wel staan).
 
-## Stap 4 — controleren
+## Stap 4 — foto's terugzetten (indien nodig)
+
+Alleen nodig als de bucket `recipe-photos` zelf leeg/kapot is — niet als
+alleen de tabeldata (stap 1-3) het probleem was.
+
+De back-up-repo bevat onder `supabase/photos/` een spiegel van de bucket,
+met dezelfde padstructuur (`household/bestand.jpg`) als in Supabase zelf.
+Dit is te veel bestanden om één voor één via het dashboard te uploaden; laat
+dit script draaien vanuit een checkout van de back-up-repo (bijv. door een
+Claude Code-sessie met toegang tot deze repo te vragen dit voor je uit te
+voeren, of zelf lokaal met `curl`/`bash`):
+
+```bash
+SUPABASE_URL="https://uutvmhoplasohgucxopa.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="plak-hier-de-service-role-sleutel"   # Project Settings > API
+
+cd supabase/photos
+find . -type f | while read -r f; do
+  path="${f#./}"
+  curl -sS -X POST "$SUPABASE_URL/storage/v1/object/recipe-photos/$path" \
+    -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+    -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+    -H "x-upsert: true" \
+    --data-binary "@$f"
+done
+```
+
+De `service_role`-sleutel staat in het Supabase-dashboard onder
+**Project Settings → API** (dezelfde die ook als GitHub-secret
+`SUPABASE_SERVICE_ROLE_KEY` gebruikt wordt voor de back-up zelf).
+
+## Stap 5 — controleren
 
 Open de app. Dankzij de live-sync (Supabase realtime) komt de herstelde data
 er vanzelf in, of ververs de pagina eenmalig als dat niet direct gebeurt.
@@ -89,7 +124,8 @@ er vanzelf in, of ververs de pagina eenmalig als dat niet direct gebeurt.
 ## Wat wordt hersteld, wat niet
 
 - **Wel**: boodschappenlijst, recepten, planner, favorieten, voorraad, etc. —
-  alles wat in `app_kv` staat (zie `SYNC_KEYS` in `index.html`).
-- **Niet**: foto's in de Storage-bucket `recipe-photos`. Die vallen buiten
-  deze back-up. Een recept-tekst komt terug, maar als de bijbehorende foto
-  in de bucket zelf verwijderd is, komt die foto niet automatisch terug.
+  alles wat in `app_kv` staat (zie `SYNC_KEYS` in `index.html`) — én de
+  recept-foto's uit de bucket `recipe-photos`.
+- **Let op**: de foto-spiegel bewaart geen historie per dag, alleen de meest
+  recente stand. Een foto die je gisteren zelf verwijderd hebt uit de app,
+  staat dus ook niet meer in de back-up van vandaag.
