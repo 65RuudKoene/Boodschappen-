@@ -1535,16 +1535,29 @@ function titleSimilarity(a,b){
   let shared=0; wa.forEach(function(w){ if(wb.has(w)) shared++; });
   return shared/Math.min(wa.size,wb.size);
 }
-function findSimilarRecipe(title){
+/* Titels via AI-uitlezen zijn niet altijd betrouwbaar (OCR-fouten, of de AI "corrigeert"
+   herhaalde lettergrepen zoals "zalmbonbons" naar "zalmbons"). Ingrediëntnamen komen er
+   meestal wel consistent uit, dus die gebruiken we als extra signaal naast de titel. */
+function ingredientOverlapRatio(ingA,ingB){
+  const namesA=new Set((ingA||[]).map(function(g){return normalizeTitleWords(g.n).join(' ');}).filter(Boolean));
+  const namesB=new Set((ingB||[]).map(function(g){return normalizeTitleWords(g.n).join(' ');}).filter(Boolean));
+  if(!namesA.size||!namesB.size) return 0;
+  let shared=0; namesA.forEach(function(n){ if(namesB.has(n)) shared++; });
+  return shared/Math.min(namesA.size,namesB.size);
+}
+function findSimilarRecipe(r){
   const all=Object.keys(recipeById).map(function(id){return recipeById[id];});
-  for(const rec of all){ if(titleSimilarity(rec.title,title)>=0.6) return rec; }
+  for(const rec of all){
+    if(titleSimilarity(rec.title,r.title)>=0.6) return rec;
+    if(rec.meal===r.meal && ingredientOverlapRatio(rec.ing,r.ing)>=0.6) return rec;
+  }
   return null;
 }
 async function confirmAddRecipe(){
   const r=previewRecipe; if(!validRecipe(r)) return;
   const st=document.getElementById('addStatus');
   const addBtn=document.querySelector('#addPreview .actionbtn');
-  const dup=findSimilarRecipe(r.title);
+  const dup=findSimilarRecipe(r);
   if(dup && !confirm('Er lijkt al een recept te bestaan met een vergelijkbare naam: "'+dup.title+'".\n\nToch dit als nieuw, apart recept toevoegen?')){
     st.textContent='Niet toegevoegd (lijkt al te bestaan).';
     return;
@@ -1583,7 +1596,7 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='45';
+const APP_VERSION='46';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
