@@ -35,7 +35,9 @@ Regels:
 - Schrijf alles in het Nederlands. Verzin niets wat niet in de bron staat.
 - Als er meerdere foto's zijn, horen ze bij hetzelfde recept (bijv. voor- en achterkant); combineer de informatie.
 - Neem ALLE bereidingsstappen over uit de bron, in dezelfde volgorde en met hetzelfde aantal stappen. Voeg stappen niet samen, vat ze niet in als één stap en sla er geen over — ook niet als een stap kort is.
-- Neem de titel LETTERLIJK en EXACT over zoals die in de bron staat. Parafraseer 'm niet, vertaal geen woorden naar synoniemen en verzin geen alternatieve bewoording.`;
+- Neem de titel LETTERLIJK en EXACT over zoals die in de bron staat. Parafraseer 'm niet, vertaal geen woorden naar synoniemen en verzin geen alternatieve bewoording.
+- Lees de titel bij een foto extra zorgvuldig, letter voor letter — verward woorden niet met woorden die er ongeveer hetzelfde uitzien (bijv. "gerookte" is niet hetzelfde als "geroofde").
+- Als een woord in de titel een lettergreep herhaalt (bijv. "zalmbonbons"), is dat vrijwel altijd opzettelijk en GEEN typfout — neem het exact zo over, verkort of "corrigeer" het niet.`;
 
 const MAX_IMAGES = 4;
 const ALLOWED_MEDIA = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
