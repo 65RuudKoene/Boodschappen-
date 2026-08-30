@@ -1439,9 +1439,11 @@ async function handleOwnPhotoInput(e){
 /* Zet een gecomprimeerde foto in de Storage-bucket 'recipe-photos' (publiek leesbaar) i.p.v. 'm
    volledig in de gesynchroniseerde receptdata te proppen — belangrijk zodra er veel recepten met
    foto bijkomen. Lukt de upload niet (bijv. bucket nog niet aangemaakt), dan valt het terug op de
-   foto zelf inline, zodat het recept in elk geval gewoon met plaatje wordt toegevoegd.*/
+   foto zelf inline, zodat het recept in elk geval gewoon met plaatje wordt toegevoegd. Geeft ook
+   de foutmelding terug (i.p.v. 'm alleen te loggen) zodat de gebruiker een mislukte upload kan zien
+   i.p.v. dat die onopgemerkt blijft achter de werkende fallback. */
 async function uploadRecipePhoto(photo){
-  if(!sb || !photo) return null;
+  if(!sb || !photo) return {url:null, error:null};
   try{
     const bin=atob(photo.base64);
     const bytes=new Uint8Array(bin.length);
@@ -1451,8 +1453,12 @@ async function uploadRecipePhoto(photo){
     const up=await sb.storage.from('recipe-photos').upload(path, blob, {contentType:photo.mediaType||'image/jpeg', upsert:false});
     if(up.error) throw up.error;
     const pub=sb.storage.from('recipe-photos').getPublicUrl(path);
-    return (pub && pub.data && pub.data.publicUrl) || null;
-  }catch(e){ console.warn('foto-upload mislukt, val terug op inline foto',e&&e.message?e.message:e); return null; }
+    return {url:(pub && pub.data && pub.data.publicUrl) || null, error:null};
+  }catch(e){
+    const msg=e&&e.message?e.message:String(e);
+    console.warn('foto-upload mislukt, val terug op inline foto',msg);
+    return {url:null, error:msg};
+  }
 }
 async function fetchRecipe(){
   const st=document.getElementById('addStatus'), pv=document.getElementById('addPreview');
@@ -1528,8 +1534,11 @@ async function confirmAddRecipe(){
     const ownPhoto=addMode==='text'?addOwnPhoto:(addMode==='photo'?addPhotos[0]:null);
     if(ownPhoto){
       st.textContent='Even de foto opslaan…';
-      const url=await uploadRecipePhoto(ownPhoto);
-      rec.image=url||ownPhoto.dataUrl;
+      const uploaded=await uploadRecipePhoto(ownPhoto);
+      rec.image=uploaded.url||ownPhoto.dataUrl;
+      if(!uploaded.url && uploaded.error){
+        alert('Let op: de foto kon niet naar de gedeelde fotoserver geüpload worden (recept is wel gewoon toegevoegd met de foto erbij).\n\nFoutmelding: '+uploaded.error);
+      }
     }
   }
   if(r.source) rec.source=r.source;
@@ -1549,7 +1558,7 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='43';
+const APP_VERSION='44';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
