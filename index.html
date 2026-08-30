@@ -1520,10 +1520,35 @@ function renderPreview(r){
   cancel.onclick=function(){ previewRecipe=null; document.getElementById('addPreview').innerHTML=''; document.getElementById('addStatus').textContent=''; };
   pv.appendChild(add); pv.appendChild(cancel);
 }
+/* Simpele gelijkenis-check op titelwoorden, om (bijna-)duplicaten te herkennen ook als
+   de AI de titel niet letterlijk overneemt (bijv. "geroosterde" i.p.v. "geroofde"). Lidwoorden/
+   voorzetsels worden genegeerd, anders scoren losse recepten die toevallig "van de BBQ" delen
+   ook als duplicaat. */
+const TITLE_STOPWORDS=new Set(['de','het','een','van','met','en','op','in','voor','uit','aan','tot','bij']);
+function normalizeTitleWords(t){
+  return (t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(function(w){return w&&!TITLE_STOPWORDS.has(w);});
+}
+function titleSimilarity(a,b){
+  const wa=new Set(normalizeTitleWords(a)), wb=new Set(normalizeTitleWords(b));
+  if(!wa.size||!wb.size) return 0;
+  let shared=0; wa.forEach(function(w){ if(wb.has(w)) shared++; });
+  return shared/Math.min(wa.size,wb.size);
+}
+function findSimilarRecipe(title){
+  const all=Object.keys(recipeById).map(function(id){return recipeById[id];});
+  for(const rec of all){ if(titleSimilarity(rec.title,title)>=0.6) return rec; }
+  return null;
+}
 async function confirmAddRecipe(){
   const r=previewRecipe; if(!validRecipe(r)) return;
   const st=document.getElementById('addStatus');
   const addBtn=document.querySelector('#addPreview .actionbtn');
+  const dup=findSimilarRecipe(r.title);
+  if(dup && !confirm('Er lijkt al een recept te bestaan met een vergelijkbare naam: "'+dup.title+'".\n\nToch dit als nieuw, apart recept toevoegen?')){
+    st.textContent='Niet toegevoegd (lijkt al te bestaan).';
+    return;
+  }
   if(addBtn) addBtn.disabled=true;
   let id=slugify(r.title); if(recipeById[id]) id=id+'-'+genId().slice(0,4);
   const rec={ id:id, title:r.title, time:r.time||'', meal:(r.meal&&MEALS[r.meal])?r.meal:'diner', emoji:r.emoji||'🍽️',
@@ -1558,7 +1583,7 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='44';
+const APP_VERSION='45';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
