@@ -1,7 +1,9 @@
 name: Backup Supabase data
 
 # Zet elke dag een export van de app-data (tabel app_kv: boodschappenlijst,
-# recepten, planner, etc.) weg in de privé-repo Backup-Supabase-boodschappen-.
+# recepten, planner, etc.) én een spiegel van de recept-foto's
+# (Storage-bucket recipe-photos) weg in de privé-repo
+# Backup-Supabase-boodschappen-.
 #
 # Eenmalige setup (zie README hieronder in deze workflow):
 # 1. Privé GitHub-repo "Backup-Supabase-boodschappen-" bestaat al.
@@ -9,6 +11,11 @@ name: Backup Supabase data
 #    rechten, alleen voor die repo.
 # 3. Zet dat token als repository secret BACKUP_REPO_TOKEN in deze repo
 #    (Settings > Secrets and variables > Actions > New repository secret).
+# 4. Zet ook de "service_role" sleutel van het Supabase-project (Project
+#    Settings > API > service_role secret) als repository secret
+#    SUPABASE_SERVICE_ROLE_KEY. Deze is nodig om de inhoud van de
+#    foto-bucket te kunnen opsommen en downloaden (de publieke sleutel mag
+#    dat niet); deze sleutel wordt alleen hier gebruikt, nooit in de app zelf.
 
 on:
   schedule:
@@ -21,10 +28,11 @@ jobs:
     env:
       BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
       BACKUP_REPO: 65RuudKoene/Backup-Supabase-boodschappen-
+      SUPABASE_URL: https://uutvmhoplasohgucxopa.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - name: Data ophalen bij Supabase
         env:
-          SUPABASE_URL: https://uutvmhoplasohgucxopa.supabase.co
           SUPABASE_KEY: sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j
         run: |
           set -euo pipefail
@@ -54,13 +62,65 @@ jobs:
           git config user.email "backup-bot@users.noreply.github.com"
           git add .
           if git diff --cached --quiet; then
-            echo "Geen wijzigingen, niets te committen"
+            echo "Geen wijzigingen in app_kv, niets te committen"
           else
             git commit -m "Backup app_kv ${date}"
             git push
           fi
 
-      - name: Secret ontbreekt nog
-        if: ${{ env.BACKUP_REPO_TOKEN == '' }}
+      - name: Recept-foto's spiegelen naar privé-repo
+        if: ${{ env.BACKUP_REPO_TOKEN != '' && env.SUPABASE_SERVICE_ROLE_KEY != '' }}
         run: |
-          echo "::warning::BACKUP_REPO_TOKEN secret is nog niet ingesteld, backup is opgehaald maar niet weggeschreven. Zie de comments bovenin dit workflow-bestand."
+          set -euo pipefail
+          if [ ! -d backup-repo ]; then
+            git clone "https://x-access-token:${BACKUP_REPO_TOKEN}@github.com/${BACKUP_REPO}.git" backup-repo
+          fi
+          cd backup-repo
+          mkdir -p supabase/photos
+          # spiegel = eerst leegmaken, dan opnieuw vullen, zodat verwijderde
+          # foto's ook uit de backup verdwijnen
+          find supabase/photos -mindepth 1 -delete
+
+          list_prefix() {
+            curl -sS -X POST "$SUPABASE_URL/storage/v1/object/list/recipe-photos" \
+              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "content-type: application/json" \
+              -d "{\"prefix\":\"$1\",\"limit\":1000,\"sortBy\":{\"column\":\"name\",\"order\":\"asc\"}}"
+          }
+
+          # Padstructuur is household/bestand.jpg (zie uploadRecipePhoto() in
+          # index.html) — een "map" (household) komt terug met metadata=null,
+          # een echt bestand heeft altijd metadata.
+          folders=$(list_prefix "" | jq -r '.[] | select(.metadata == null) | .name')
+          for folder in $folders; do
+            mkdir -p "supabase/photos/$folder"
+            files=$(list_prefix "$folder/" | jq -r '.[] | select(.metadata != null) | .name')
+            for file in $files; do
+              path="$folder/$file"
+              curl -sS -o "supabase/photos/$path" \
+                "$SUPABASE_URL/storage/v1/object/recipe-photos/$path" \
+                -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+                -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
+            done
+          done
+
+          git config user.name "backup-bot"
+          git config user.email "backup-bot@users.noreply.github.com"
+          git add supabase/photos
+          if git diff --cached --quiet; then
+            echo "Geen wijzigingen in foto's, niets te committen"
+          else
+            git commit -m "Spiegel recept-foto's $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - name: Secrets ontbreken nog
+        if: ${{ env.BACKUP_REPO_TOKEN == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        run: |
+          if [ -z "${BACKUP_REPO_TOKEN}" ]; then
+            echo "::warning::BACKUP_REPO_TOKEN secret is nog niet ingesteld, backup is opgehaald maar niet weggeschreven. Zie de comments bovenin dit workflow-bestand."
+          fi
+          if [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "::warning::SUPABASE_SERVICE_ROLE_KEY secret is nog niet ingesteld, de recept-foto's worden niet geback-upt. Zie de comments bovenin dit workflow-bestand."
+          fi
