@@ -52,11 +52,12 @@ body.home-mode{background:#f5ead8}
 #homeView .h-top .h-week{font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 #homeView .h-greet{font-size:40px;line-height:1;margin:0;font-weight:800;letter-spacing:-.02em;color:var(--h-acc800)}
 #homeView .h-status{margin:10px 0 0;font-size:16px;line-height:1.5;color:var(--h-n700);max-width:300px;text-wrap:pretty}
-#homeView .h-nameprompt{display:flex;align-items:center;gap:8px;background:var(--h-surface);border-radius:999px;padding:6px 6px 6px 16px;margin:12px 0 0}
-#homeView .h-nameprompt input{flex:1;min-width:0;border:0;background:transparent;color:var(--h-n900);font-size:15px;padding:8px 0}
+#homeView .h-nameprompt{display:flex;flex-direction:column;gap:8px;background:var(--h-surface);border-radius:20px;padding:14px 16px;margin:12px 0 0}
+#homeView .h-nameprompt-label{margin:0;font-size:13px;font-weight:700;color:var(--h-n700)}
+#homeView .h-nameprompt-msg{margin:0;font-size:13px;color:#b3261e}
+#homeView .h-nameprompt input{width:100%;border:1px solid var(--h-n400);background:var(--h-bg);color:var(--h-n900);font-size:15px;padding:9px 12px;border-radius:12px}
 #homeView .h-nameprompt input::placeholder{color:var(--h-n600)}
-#homeView .h-nameprompt-save{flex:0 0 auto;border:0;background:var(--h-acc700);color:var(--h-cream);font-weight:700;font-size:14px;padding:9px 16px;min-height:40px}
-#homeView .h-nameprompt-x{flex:0 0 auto;border:0;background:transparent;color:var(--h-n600);font-size:18px;line-height:1;padding:4px 6px;min-height:40px;min-width:40px}
+#homeView .h-nameprompt-save{border:0;background:var(--h-acc700);color:var(--h-cream);font-weight:700;font-size:14px;padding:10px 16px;min-height:40px;border-radius:12px}
 #homeView .h-doors{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 #homeView .h-door{border:0;padding:0;border-radius:28px;cursor:pointer;text-align:left;color:var(--h-text);min-height:214px;display:flex;flex-direction:column;overflow:hidden;transition:transform .12s ease,box-shadow .12s ease}
 #homeView .h-door:active{transform:translateY(3px)}
@@ -314,7 +315,8 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
     <h2>Boodschappen &amp; Recepten</h2>
     <p class="login-sub">Log in met het gedeelde wachtwoord.</p>
     <input id="loginPass" type="password" inputmode="text" autocomplete="current-password" placeholder="Wachtwoord">
-    <input id="loginName" type="text" inputmode="text" autocomplete="given-name" placeholder="Jouw naam (optioneel)">
+    <input id="loginFirstName" type="text" inputmode="text" autocomplete="given-name" placeholder="Voornaam">
+    <input id="loginLastName" type="text" inputmode="text" autocomplete="family-name" placeholder="Achternaam">
     <button id="loginBtn" class="actionbtn">Inloggen</button>
     <div id="loginMsg" class="badge"></div>
     <div id="appVer" class="badge" style="margin-top:14px;opacity:.6"></div>
@@ -341,9 +343,11 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
     <h2 class="h-greet" id="homeGreet">Hallo.</h2>
     <p class="h-status" id="homeStatus"></p>
     <div id="homeNamePrompt" class="h-nameprompt hidden">
-      <input id="homeNameInput" type="text" inputmode="text" autocomplete="given-name" placeholder="Hoe mogen we je noemen?">
+      <p class="h-nameprompt-label">Hoe mogen we je noemen?</p>
+      <input id="homeFirstNameInput" type="text" inputmode="text" autocomplete="given-name" placeholder="Voornaam">
+      <input id="homeLastNameInput" type="text" inputmode="text" autocomplete="family-name" placeholder="Achternaam">
       <button class="h-nameprompt-save" onclick="homeSaveName()">Opslaan</button>
-      <button class="h-nameprompt-x" onclick="homeDismissNamePrompt()" aria-label="Niet nu">×</button>
+      <p id="homeNamePromptMsg" class="h-nameprompt-msg hidden">Vul zowel je voor- als achternaam in.</p>
     </div>
   </div>
 
@@ -403,7 +407,8 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
     <div class="badge serv-note" id="syncInfo"></div>
     <div class="badge serv-note">Iemand anders geeft je hetzelfde wachtwoord in op zijn telefoon en jullie delen dezelfde lijst, weekplanning en voorraad — live.</div>
     <button id="changePassBtn" class="linkbtn" style="padding:8px 0">Wachtwoord wijzigen</button>
-    <div class="synced-field"><label for="yourNameField">Jouw naam</label><input id="yourNameField" type="text" inputmode="text" autocomplete="given-name" placeholder="Bijv. Ruud"></div>
+    <div class="synced-field"><label for="yourFirstNameField">Voornaam</label><input id="yourFirstNameField" type="text" inputmode="text" autocomplete="given-name" placeholder="Bijv. Ruud"></div>
+    <div class="synced-field"><label for="yourLastNameField">Achternaam</label><input id="yourLastNameField" type="text" inputmode="text" autocomplete="family-name" placeholder="Bijv. Koene"></div>
     <button id="logoutBtn" class="actionbtn">Uitloggen</button>
   </div>
 </section>
@@ -1596,7 +1601,7 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='46';
+const APP_VERSION='47';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
@@ -1657,7 +1662,7 @@ function renderSyncInfo(){
   if(sb&&syncCfg) el.textContent='✅ Ingelogd en live gedeeld (versie '+APP_VERSION+'). Iedereen die op zijn toestel hetzelfde wachtwoord invult, deelt deze lijst.';
   else el.textContent='Bezig met verbinden… (versie '+APP_VERSION+')';
 }
-function showLogin(){ document.getElementById('loginMsg').textContent=''; document.getElementById('loginPass').value=''; document.getElementById('loginGate').classList.remove('hidden'); }
+function showLogin(){ document.getElementById('loginMsg').textContent=''; document.getElementById('loginPass').value=''; document.getElementById('loginFirstName').value=getFirstName(); document.getElementById('loginLastName').value=getLastName(); document.getElementById('loginGate').classList.remove('hidden'); }
 function hideLogin(){ document.getElementById('loginGate').classList.add('hidden'); }
 async function doLogin(pw){
   pw=(pw||'').trim();
@@ -1693,25 +1698,32 @@ function weekProgress(key){
   return {total:total, checked:checked};
 }
 function homeProgress(){ return weekProgress(homeWeekKey()); }
+/* Voor- en achternaam zijn verplicht, apart opgeslagen en samengevoegd waar nodig. */
+function getFirstName(){ return (localStorage.getItem('user-firstname-v1')||'').trim(); }
+function getLastName(){ return (localStorage.getItem('user-lastname-v1')||'').trim(); }
+function getFullName(){ const f=getFirstName(), l=getLastName(); return (f&&l) ? f+' '+l : ''; }
+function setFullName(first,last){
+  first=(first||'').trim(); last=(last||'').trim();
+  if(first) localStorage.setItem('user-firstname-v1',first);
+  if(last) localStorage.setItem('user-lastname-v1',last);
+}
 function homeGreeting(){
   const h=new Date().getHours(), base=h<6?'Goedenacht':(h<12?'Goedemorgen':(h<18?'Goedemiddag':'Goedenavond'));
-  const naam=(localStorage.getItem('user-name-v1')||'').trim();
+  const naam=getFullName();
   return naam ? base+', '+naam+'.' : base+'.';
 }
-/* Vraagt de naam één keer op het startscherm (voor wie al ingelogd was en het
-   inlogscherm dus niet meer ziet). Verdwijnt na opslaan of wegklikken en komt
-   daarna niet meer terug, ook niet als er geen naam is ingevuld. */
+/* Vraagt voor- en achternaam op het startscherm (voor wie al ingelogd was en het
+   inlogscherm dus niet meer ziet). Is verplicht: blijft staan tot allebei ingevuld zijn. */
 function homeShouldAskName(){
-  return !(localStorage.getItem('user-name-v1')||'').trim() && !localStorage.getItem('name-prompt-seen-v1');
+  return !getFullName();
 }
 function homeSaveName(){
-  const v=(document.getElementById('homeNameInput').value||'').trim();
-  if(v) localStorage.setItem('user-name-v1',v);
-  localStorage.setItem('name-prompt-seen-v1','1');
-  refreshHome();
-}
-function homeDismissNamePrompt(){
-  localStorage.setItem('name-prompt-seen-v1','1');
+  const first=(document.getElementById('homeFirstNameInput').value||'').trim();
+  const last=(document.getElementById('homeLastNameInput').value||'').trim();
+  const msg=document.getElementById('homeNamePromptMsg');
+  if(!first||!last){ if(msg) msg.classList.remove('hidden'); return; }
+  if(msg) msg.classList.add('hidden');
+  setFullName(first,last);
   refreshHome();
 }
 const HOME_DOOR_IMAGE='images/home-recepten.webp';
@@ -1809,10 +1821,32 @@ document.getElementById('addOwnPhotoInput').onchange=handleOwnPhotoInput;
 renderOwnPhotoThumb();
 document.querySelectorAll('#addModeChips .chip').forEach(function(b){ b.onclick=function(){ setAddMode(b.dataset.mode); }; });
 renderPhotoThumbs();
-document.getElementById('loginBtn').onclick=function(){ const nm=document.getElementById('loginName').value.trim(); if(nm) localStorage.setItem('user-name-v1',nm); doLogin(document.getElementById('loginPass').value); };
-document.getElementById('loginPass').addEventListener('keydown',function(e){ if(e.key==='Enter'){ const nm=document.getElementById('loginName').value.trim(); if(nm) localStorage.setItem('user-name-v1',nm); doLogin(document.getElementById('loginPass').value); } });
-(function(){ const nf=document.getElementById('yourNameField'); nf.value=localStorage.getItem('user-name-v1')||''; nf.addEventListener('change',()=>{ const v=nf.value.trim(); if(v) localStorage.setItem('user-name-v1',v); else localStorage.removeItem('user-name-v1'); refreshHome(); }); })();
-document.getElementById('homeNameInput').addEventListener('keydown',function(e){ if(e.key==='Enter') homeSaveName(); });
+function attemptLogin(){
+  const first=document.getElementById('loginFirstName').value.trim();
+  const last=document.getElementById('loginLastName').value.trim();
+  const msg=document.getElementById('loginMsg');
+  if(!first||!last){ msg.textContent='Vul zowel je voor- als achternaam in.'; return; }
+  setFullName(first,last);
+  doLogin(document.getElementById('loginPass').value);
+}
+document.getElementById('loginBtn').onclick=attemptLogin;
+document.getElementById('loginPass').addEventListener('keydown',function(e){ if(e.key==='Enter') attemptLogin(); });
+document.getElementById('loginFirstName').addEventListener('keydown',function(e){ if(e.key==='Enter') attemptLogin(); });
+document.getElementById('loginLastName').addEventListener('keydown',function(e){ if(e.key==='Enter') attemptLogin(); });
+/* Naam wijzigen in de instellingen mag niet leeg worden gemaakt (verplicht) -> bij een leeg
+   veld wordt de eerder opgeslagen waarde teruggezet i.p.v. de naam te wissen. */
+(function(){
+  const ff=document.getElementById('yourFirstNameField'), lf=document.getElementById('yourLastNameField');
+  ff.value=getFirstName(); lf.value=getLastName();
+  function saveNames(){
+    const first=ff.value.trim(), last=lf.value.trim();
+    if(!first||!last){ ff.value=getFirstName(); lf.value=getLastName(); return; }
+    setFullName(first,last); refreshHome();
+  }
+  ff.addEventListener('change',saveNames); lf.addEventListener('change',saveNames);
+})();
+document.getElementById('homeFirstNameInput').addEventListener('keydown',function(e){ if(e.key==='Enter') homeSaveName(); });
+document.getElementById('homeLastNameInput').addEventListener('keydown',function(e){ if(e.key==='Enter') homeSaveName(); });
 document.getElementById('logoutBtn').onclick=function(){ if(confirm('Uitloggen op dit toestel? Je gedeelde lijst blijft bestaan en komt terug zodra je opnieuw inlogt met hetzelfde wachtwoord.')) doLogout(); };
 document.getElementById('changePassBtn').onclick=async function(){
   const np=prompt('Nieuw gedeeld wachtwoord.\nVul dit op álle toestellen hetzelfde in:');
