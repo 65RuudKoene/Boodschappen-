@@ -587,6 +587,9 @@ let roundsAll=JSON.parse(localStorage.getItem('planner-rounds-v1')||'{}');
 let deletedSeedIds=JSON.parse(localStorage.getItem('hidden-recipes-v1')||'[]');
 let weekServings=JSON.parse(localStorage.getItem('week-servings-v1')||'{}');
 let pantry=JSON.parse(localStorage.getItem('pantry-v1')||'[]');
+/* Per week bevroren voorraad-status, zodra er iets is afgevinkt in die week — zie
+   toelichting bij buildShopping(). */
+let pantrySnapshots=JSON.parse(localStorage.getItem('pantry-snapshots-v1')||'{}');
 let recipeNotes=JSON.parse(localStorage.getItem('recipe-notes-v1')||'{}');
 /* Favoriete recepten: 1 ster per recept, gecombineerd met het bestaande maaltijdtype-filter
    (Ontbijt/Lunch/Diner/Tussendoor) filter je zo op 'mijn favoriete lunches', 'mijn favoriete diners', etc. */
@@ -601,6 +604,8 @@ function saveManual(){ persist('planner-manual-v1',manualAll); }
 function saveDeletedSeeds(){ persist('hidden-recipes-v1',deletedSeedIds); }
 function saveWeekServings(){ persist('week-servings-v1',weekServings); }
 function savePantry(){ persist('pantry-v1',pantry); }
+function savePantrySnapshots(){ persist('pantry-snapshots-v1',pantrySnapshots); }
+function weekHasChecks(key){ const c=checksAll[key]; if(!c) return false; return Object.keys(c).some(function(k){ return c[k]; }); }
 function saveNotes(){ persist('recipe-notes-v1',recipeNotes); }
 function saveCustom(){ persist('custom-recipes-v1',customRecipes); }
 function saveFavorites(){ persist('favorite-recipes-v1',favoriteRecipes); }
@@ -658,13 +663,19 @@ function scaleSteps(r,s){
 }
 
 /* ---------- SHOPPING BUILD ---------- */
+/* Zodra er in een week al iets is afgevinkt, bevriezen we de voorraad-status voor die week
+   (op het moment van de eerstvolgende keer dat de lijst gebouwd wordt) — zo verandert een latere
+   wijziging aan "heb ik al in huis" niet meer de lijst van een week waar al mee begonnen is.
+   Een gloednieuwe, nog niet-afgevinkte week reageert wel gewoon live op de huidige voorraad. */
 function buildShopping(key,ids){
+  if(weekHasChecks(key) && !pantrySnapshots[key]){ pantrySnapshots[key]=pantry.slice(); savePantrySnapshots(); }
+  const effectivePantry=pantrySnapshots[key]||pantry;
   const map={}, order=[];
   ids.forEach(id=>{ const r=recipeById[id]; if(!r) return;
     const s=getWeekServings(key,id);
     r.ing.forEach(g=>{
       const nameKey=g.n.trim().toLowerCase();
-      if(pantry.some(p=>p.trim().toLowerCase()===nameKey)) return;
+      if(effectivePantry.some(p=>p.trim().toLowerCase()===nameKey)) return;
       const k=g.c+'|'+nameKey+'|'+g.u;
       if(!map[k]){ map[k]={q:0,u:g.u,n:g.n,c:g.c,hasNum:false}; order.push(k); }
       if(g.q!=null){ map[k].q+=g.q*s/BASE_SERV; map[k].hasNum=true; }
@@ -1069,7 +1080,11 @@ function renderShopWrap(key){
 function hideDone(){ doneHidden=!doneHidden; renderShopWrap(curKey()); }
 function resetChecks(){
   const key=curKey(), yw=isoWeek(viewDate);
-  if(confirm('Alle vinkjes voor week '+yw.week+' wissen?')){ checksAll[key]={}; saveChecks(); renderShopWrap(key); }
+  if(confirm('Alle vinkjes voor week '+yw.week+' wissen?')){
+    checksAll[key]={}; saveChecks();
+    if(pantrySnapshots[key]){ delete pantrySnapshots[key]; savePantrySnapshots(); }
+    renderShopWrap(key);
+  }
 }
 
 /* ---------- DELEN ---------- */
@@ -1601,10 +1616,10 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='47';
+const APP_VERSION='48';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
-const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
+const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
 let sb=null, syncCfg=null, syncApplying=false, lastPush={};
 /* wachtwoord -> gedeelde ruimte (cyrb53-hash; het wachtwoord zelf komt niet in de database) */
 function householdFromPass(pw){ let h1=0xdeadbeef,h2=0x41c6ce57; for(let i=0;i<pw.length;i++){ const c=pw.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); } h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909); return 'hh_'+(h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0'); }
@@ -1620,6 +1635,7 @@ function applyIncoming(k,v){
   else if(k==='hidden-recipes-v1') deletedSeedIds=v||[];
   else if(k==='week-servings-v1') weekServings=v||{};
   else if(k==='pantry-v1') pantry=v||[];
+  else if(k==='pantry-snapshots-v1') pantrySnapshots=v||{};
   else if(k==='recipe-notes-v1') recipeNotes=v||{};
   else if(k==='custom-recipes-v1'){ customRecipes=v||[]; rebuildIndex(); }
   else if(k==='planner-rounds-v1') roundsAll=v||{};
@@ -1678,7 +1694,7 @@ function doLogout(){
   try{ if(sb) sb.removeAllChannels(); }catch(e){}
   sb=null; syncCfg=null;
   localStorage.removeItem('sync-pass-v1');
-  plannerWeeks={}; checksAll={}; manualAll={}; deletedSeedIds=[]; weekServings={}; pantry=[]; recipeNotes={}; customRecipes=[]; roundsAll={}; favoriteRecipes=[];
+  plannerWeeks={}; checksAll={}; manualAll={}; deletedSeedIds=[]; weekServings={}; pantry=[]; pantrySnapshots={}; recipeNotes={}; customRecipes=[]; roundsAll={}; favoriteRecipes=[];
   SYNC_KEYS.forEach(function(k){ localStorage.removeItem(k); });
   mergeSeedRecipes(); rebuildIndex();
   goHome(); showLogin();
