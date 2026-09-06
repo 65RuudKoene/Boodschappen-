@@ -1646,7 +1646,10 @@ function applyIncoming(k,v){
 function syncPush(k,val){
   if(!sb||!syncCfg||syncApplying) return;
   lastPush[k]=JSON.stringify(val);
-  sb.from('app_kv').upsert({household:syncCfg.household,k,v:val,updated_at:new Date().toISOString()}).then(function(res){ if(res&&res.error) console.warn('sync push',k,res.error.message); });
+  sb.from('app_kv').upsert({household:syncCfg.household,k,v:val,updated_at:new Date().toISOString()}).then(function(res){
+    if(res&&res.error){ console.warn('sync push',k,res.error.message); return; }
+    if(syncCfg&&syncCfg.channel) syncCfg.channel.send({type:'broadcast',event:'kv',payload:{k:k,v:val}});
+  });
 }
 function rerender(){
   refreshHome();
@@ -1657,7 +1660,7 @@ function rerender(){
 async function syncConnect(cfg){
   if(!(window.supabase&&window.supabase.createClient)) throw new Error('Supabase-bibliotheek niet geladen');
   try{ cfg=Object.assign({},cfg,{url:new URL(cfg.url).origin}); }catch(e){}
-  sb=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:false}});
+  sb=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:false},global:{headers:{'x-household':cfg.household}}});
   syncCfg=cfg;
   const res=await sb.from('app_kv').select('k,v').eq('household',cfg.household);
   if(res.error) throw res.error;
@@ -1666,11 +1669,12 @@ async function syncConnect(cfg){
   if(mergeSeedRecipes()) remote.add('custom-recipes-v1'); // basisrecepten die nog ontbraken zijn net toegevoegd en al gepusht
   SYNC_KEYS.forEach(function(k){ if(!remote.has(k)){ const v=localVal(k); if(!isEmptyVal(v)) sb.from('app_kv').upsert({household:cfg.household,k:k,v:v,updated_at:new Date().toISOString()}); } });
   sb.from('app_kv').upsert({household:cfg.household,k:'_active',v:true,updated_at:new Date().toISOString()}); // markering voor toegangscheck AI-functie
-  sb.channel('kv-'+cfg.household)
-    .on('postgres_changes',{event:'*',schema:'public',table:'app_kv',filter:'household=eq.'+cfg.household},function(payload){
-      const row=payload.new; if(row&&row.k&&SYNC_KEYS.indexOf(row.k)>=0){ if(lastPush[row.k]===JSON.stringify(row.v)) return; applyIncoming(row.k,row.v); rerender(); }
+  const ch=sb.channel('kv-'+cfg.household)
+    .on('broadcast',{event:'kv'},function(msg){
+      const row=msg.payload; if(row&&row.k&&SYNC_KEYS.indexOf(row.k)>=0){ if(lastPush[row.k]===JSON.stringify(row.v)) return; applyIncoming(row.k,row.v); rerender(); }
     })
     .subscribe();
+  cfg.channel=ch; syncCfg=cfg;
   rerender();
 }
 function renderSyncInfo(){
