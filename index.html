@@ -1514,6 +1514,13 @@ async function fetchRecipe(){
     body.images=addPhotos.map(function(p){ return {data:p.base64, mediaType:p.mediaType}; });
     st.textContent='Bezig met uitlezen van de foto\u2019s\u2026 (kan ~15 seconden duren)';
   }
+  /* Zorgt dat de toegangscheck van de AI-functie ('bestaat dit huishouden al?') niet kan
+     mislopen vlak na het allereerste keer inloggen: syncConnect() zet die markering ook,
+     maar niet afgewacht — bij een gloednieuw wachtwoord kan de gebruiker sneller bij
+     'Recept toevoegen' zijn dan die schrijfactie klaar is. Hier wachten we 'm alsnog af. */
+  if(sb&&syncCfg&&syncCfg.household){
+    try{ await sb.from('app_kv').upsert({household:syncCfg.household,k:'_active',v:true,updated_at:new Date().toISOString()}); }catch(e){}
+  }
   try{
     const res=await sb.functions.invoke('parse-recipe',{ body:body });
     if(res.error) throw new Error(await extractFnErrorMessage(res.error));
@@ -1630,7 +1637,7 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='49';
+const APP_VERSION='50';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
