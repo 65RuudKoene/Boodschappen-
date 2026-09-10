@@ -193,6 +193,7 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 
 .serv{display:flex;align-items:center;gap:10px;margin:10px 0 2px;flex-wrap:wrap}
 .serv .lbl{font-size:14px;color:var(--muted)}
+.serv select.mealSel{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:7px 10px;font-size:15px}
 .serv-note{display:block;margin:2px 0 4px}
 .stepper{display:inline-flex;align-items:center;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px}
 .stepper button{width:34px;height:34px;border-radius:999px;background:var(--card);color:var(--text);font-size:0;line-height:1;position:relative;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
@@ -1262,6 +1263,7 @@ function renderRecipes(){
     let cardServ=BASE_SERV;
     body.innerHTML='<div class="badge"><span class="servTxt">'+servLabel(cardServ)+'</span></div>'+
       '<div class="serv"><span class="lbl">Aantal personen</span><span class="stepper"><button class="minus" aria-label="Minder personen"></button><span class="cnt">'+servLabel(cardServ)+'</span><button class="plus" aria-label="Meer personen"></button></span></div>'+
+      '<div class="serv"><span class="lbl">Maaltijd</span><select class="mealSel" aria-label="Maaltijd">'+Object.entries(MEALS).map(([k,label])=>'<option value="'+k+'"'+(r.meal===k?' selected':'')+'>'+label+'</option>').join('')+'</select></div>'+
       '<div class="badge serv-note">Alleen om te bekijken. Voor de boodschappenlijst stel je het aantal personen per week in.</div>'+
       '<h3>Ingrediënten</h3><ul class="ingList">'+r.ing.map(g=>'<li>'+ingText(scaleGroup(g,cardServ))+'</li>').join('')+'</ul>'+
       '<h3>Bereiding</h3><ol class="stepList">'+scaleSteps(r,cardServ).map(x=>'<li>'+x+'</li>').join('')+'</ol>'+
@@ -1287,6 +1289,7 @@ function renderRecipes(){
     minus.disabled=cardServ<=MIN_SERV;
     minus.onclick=()=>applyServ(cardServ-1);
     plus.onclick=()=>applyServ(cardServ+1);
+    body.querySelector('.mealSel').onchange=(e)=>setRecipeMeal(r.id,e.target.value);
     card.append(head,thumb,body);
     root.appendChild(card);
   });
@@ -1314,6 +1317,17 @@ function renameRecipe(id){
   customRecipes[idx]=Object.assign({},customRecipes[idx],{title:t});
   saveCustom(); rebuildIndex();
   renderRecipes(); refreshHome();
+}
+/* Bv. handig als de AI een recept als lunch herkent terwijl het eigenlijk een diner is. */
+function setRecipeMeal(id,meal){
+  if(!MEALS[meal]) return;
+  const idx=customRecipes.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  if(customRecipes[idx].meal===meal) return;
+  customRecipes[idx]=Object.assign({},customRecipes[idx],{meal:meal});
+  saveCustom(); rebuildIndex();
+  renderChips(); renderRecipes(); refreshHome();
+  requestAnimationFrame(()=>{ const el=document.getElementById('recipe-'+id); if(el){ el.classList.add('expanded'); el.scrollIntoView({behavior:'instant',block:'start'}); } });
 }
 function deleteRecipe(id){
   const r=recipeById[id];
@@ -1616,7 +1630,7 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='48';
+const APP_VERSION='49';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
