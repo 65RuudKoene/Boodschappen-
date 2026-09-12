@@ -1494,7 +1494,7 @@ function showAdd(){
 }
 
 /* ---------- RECEPT TOEVOEGEN VIA AI (link, foto of eigen tekst) ---------- */
-let previewRecipe=null, addMode='url', addPhotos=[], addOwnPhoto=null;
+let previewRecipe=null, addMode='url', addPhotos=[], addOwnPhoto=null, previewAssumedServ=BASE_SERV;
 const MAX_ADD_PHOTOS=4;
 function slugify(t){ return (t||'recept').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||'recept'; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -1655,15 +1655,32 @@ async function extractFnErrorMessage(err){
   }catch(e){}
   return fallback;
 }
+/* De AI rekent standaard alles om naar 2 personen. Hier kun je vlak vóór het toevoegen alsnog
+   corrigeren als dat aantal niet klopt (hoeveelheden schalen mee) en de maaltijdcategorie zetten,
+   zodat je niet meteen daarna naar 'Recept bewerken' hoeft. */
 function renderPreview(r){
+  previewAssumedServ=BASE_SERV;
   const pv=document.getElementById('addPreview');
-  const meal=r.meal&&MEALS[r.meal]?MEALS[r.meal]:'';
   pv.innerHTML='<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px">'
     +'<h3 style="margin:0 0 2px">'+(r.emoji?r.emoji+' ':'')+esc(r.title)+'</h3>'
-    +'<div class="badge">'+esc(r.time||'')+(meal?' · '+meal:'')+' · 2 personen</div>'
-    +'<h3>Ingrediënten</h3><ul>'+r.ing.map(function(g){return '<li>'+esc(ingText(g))+'</li>';}).join('')+'</ul>'
-    +'<h3>Bereiding</h3><ol>'+r.steps.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ol>'
+    +'<div class="badge">'+esc(r.time||'')+'</div>'
+    +'<div class="serv"><span class="lbl">Deze hoeveelheden zijn voor</span><span class="stepper"><button class="minus" aria-label="Minder personen"></button><span class="cnt"></span><button class="plus" aria-label="Meer personen"></button></span></div>'
+    +'<div class="serv"><span class="lbl">Maaltijd</span><select class="mealSel" aria-label="Maaltijd">'+Object.entries(MEALS).map(function(e){var k=e[0],label=e[1]; return '<option value="'+k+'"'+((r.meal===k||(!MEALS[r.meal]&&k==='diner'))?' selected':'')+'>'+label+'</option>';}).join('')+'</select></div>'
+    +'<h3>Ingrediënten</h3><ul class="pvIngList"></ul>'
+    +'<h3>Bereiding</h3><ol class="pvStepList"></ol>'
     +'</div>';
+  const minus=pv.querySelector('.minus'), plus=pv.querySelector('.plus'), cnt=pv.querySelector('.cnt');
+  const renderLists=function(){
+    const s=(BASE_SERV*BASE_SERV)/previewAssumedServ;
+    pv.querySelector('.pvIngList').innerHTML=r.ing.map(function(g){return '<li>'+esc(ingText(scaleGroup(g,s)))+'</li>';}).join('');
+    pv.querySelector('.pvStepList').innerHTML=scaleSteps(r,s).map(function(x){return '<li>'+esc(x)+'</li>';}).join('');
+    cnt.textContent=servLabel(previewAssumedServ);
+    minus.disabled=previewAssumedServ<=MIN_SERV;
+    plus.disabled=previewAssumedServ>=MAX_SERV;
+  };
+  minus.onclick=function(){ previewAssumedServ=clampServ(previewAssumedServ-1); renderLists(); };
+  plus.onclick=function(){ previewAssumedServ=clampServ(previewAssumedServ+1); renderLists(); };
+  renderLists();
   const add=document.createElement('button'); add.className='actionbtn'; add.style.marginTop='6px'; add.textContent='Toevoegen aan app';
   add.onclick=confirmAddRecipe;
   const cancel=document.createElement('button'); cancel.className='linkbtn'; cancel.style.marginLeft='10px'; cancel.textContent='Annuleren';
@@ -1714,9 +1731,16 @@ async function confirmAddRecipe(){
   }
   if(addBtn) addBtn.disabled=true;
   let id=slugify(r.title); if(recipeById[id]) id=id+'-'+genId().slice(0,4);
-  const rec={ id:id, title:r.title, time:r.time||'', meal:(r.meal&&MEALS[r.meal])?r.meal:'diner', emoji:r.emoji||'🍽️',
-    ing:r.ing.map(function(g){return {q:(g.q==null?null:g.q),u:g.u||'',n:g.n||'',c:(CATS.some(function(c){return c[0]===g.c;})?g.c:'voorraad')};}),
-    steps:r.steps.slice() };
+  /* Correctie toepassen als de gebruiker vlak vóór het toevoegen heeft aangegeven dat de
+     hoeveelheden eigenlijk voor een ander aantal personen dan 2 golden. */
+  const s=(BASE_SERV*BASE_SERV)/previewAssumedServ;
+  const scaledIng=r.ing.map(function(g){return scaleGroup(g,s);});
+  const scaledSteps=scaleSteps(r,s);
+  const mealSel=document.querySelector('#addPreview .mealSel');
+  const chosenMeal=(mealSel&&MEALS[mealSel.value])?mealSel.value:((r.meal&&MEALS[r.meal])?r.meal:'diner');
+  const rec={ id:id, title:r.title, time:r.time||'', meal:chosenMeal, emoji:r.emoji||'🍽️',
+    ing:scaledIng.map(function(g){return {q:(g.q==null?null:g.q),u:g.u||'',n:g.n||'',c:(CATS.some(function(c){return c[0]===g.c;})?g.c:'voorraad')};}),
+    steps:scaledSteps.slice() };
   if(r.image) rec.image=r.image;
   else{
     const ownPhoto=addMode==='text'?addOwnPhoto:(addMode==='photo'?addPhotos[0]:null);
@@ -1731,7 +1755,7 @@ async function confirmAddRecipe(){
   }
   if(r.source) rec.source=r.source;
   customRecipes.push(rec); saveCustom(); rebuildIndex();
-  previewRecipe=null;
+  previewRecipe=null; previewAssumedServ=BASE_SERV;
   addPhotos=[]; renderPhotoThumbs();
   addOwnPhoto=null; renderOwnPhotoThumb();
   const au=document.getElementById('addUrl'); if(au) au.value='';
@@ -1746,7 +1770,7 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='51';
+const APP_VERSION='52';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
