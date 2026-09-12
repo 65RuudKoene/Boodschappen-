@@ -1770,7 +1770,7 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='52';
+const APP_VERSION='53';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
@@ -1818,6 +1818,7 @@ async function syncConnect(cfg){
   syncCfg=cfg;
   const res=await sb.from('app_kv').select('k,v').eq('household',cfg.household);
   if(res.error) throw res.error;
+  const wasEmpty=!(res.data&&res.data.length); // vóór eigen schrijfacties hieronder: klopt dit huishouden al met bestaande data?
   const remote=new Set();
   (res.data||[]).forEach(function(row){ remote.add(row.k); applyIncoming(row.k,row.v); });
   if(mergeSeedRecipes()) remote.add('custom-recipes-v1'); // basisrecepten die nog ontbraken zijn net toegevoegd en al gepusht
@@ -1830,6 +1831,7 @@ async function syncConnect(cfg){
     .subscribe();
   cfg.channel=ch; syncCfg=cfg;
   rerender();
+  return {wasEmpty:wasEmpty};
 }
 function renderSyncInfo(){
   const el=document.getElementById('syncInfo');
@@ -1845,7 +1847,15 @@ async function doLogin(pw){
   msg.textContent='Inloggen…';
   localStorage.setItem('sync-pass-v1',pw);
   hideLogin(); goHome();
-  try{ await syncConnect({url:SUPA_URL,key:SUPA_KEY,household:householdFromPass(pw)}); }
+  try{
+    const info=await syncConnect({url:SUPA_URL,key:SUPA_KEY,household:householdFromPass(pw)});
+    /* Waarschuwt bij een tikfout in het wachtwoord: die levert geen foutmelding op (elk wachtwoord
+       is 'geldig'), maar verbindt stilletjes met een gloednieuw, leeg huishouden. Alleen hier bij een
+       bewuste inlogpoging tonen, niet bij het automatisch opnieuw verbinden met een opgeslagen wachtwoord. */
+    if(info&&info.wasEmpty){
+      alert('Dit lijkt een nieuw, leeg huishouden — er is nog geen bestaande boodschappenlijst of eigen recept gevonden.\n\nVerwachtte je een bestaande lijst? Controleer of je het wachtwoord goed hebt getypt (Samen delen → Uitloggen, en probeer het opnieuw).');
+    }
+  }
   catch(e){ console.warn('login sync',e&&e.message?e.message:e); }
 }
 function doLogout(){
