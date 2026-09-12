@@ -139,6 +139,19 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .item .lab{flex:1}
 .del{border:0;background:transparent;color:var(--muted);font-size:18px;padding:2px 6px;flex:0 0 auto}
 
+.ingrow{border:1px solid var(--line);border-radius:12px;padding:10px;margin:8px 0;background:var(--bg)}
+.ingrow-top{display:flex;gap:8px;align-items:center}
+.ingrow-top input{flex:1;min-width:0}
+.ingrow-bottom{display:flex;gap:6px;margin-top:8px}
+.ingrow-bottom input.ing-qty{flex:0 0 60px}
+.ingrow-bottom input.ing-unit{flex:0 0 70px}
+.ingrow-bottom select.ing-cat{flex:1;min-width:0}
+.ingrow input,.ingrow select{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:8px 10px;font-size:14px}
+.steprow{display:flex;gap:8px;align-items:flex-start;margin:8px 0}
+.steprow .stepnum{flex:0 0 20px;padding-top:11px;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.steprow textarea{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:9px 10px;font-size:14px;font-family:inherit;min-height:44px;resize:vertical}
+.steprow .del{padding-top:9px}
+
 .recipe h2{font-size:20px;margin:0 0 2px}
 .recipe ol,.recipe ul{padding-left:22px}
 .recipe li{margin:8px 0;line-height:1.35}
@@ -485,6 +498,24 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
     <button id="addFetchBtn" class="actionbtn">Ophalen met AI</button>
     <div id="addStatus" class="badge serv-note" style="margin-top:10px"></div>
     <div id="addPreview"></div>
+  </div>
+</section>
+
+<section id="editRecipeView" class="hidden">
+  <div class="card">
+    <h2>Recept bewerken</h2>
+    <div class="synced-field"><label for="editTitle">Naam</label><input id="editTitle" type="text" placeholder="Naam van het recept"></div>
+    <h3>Ingrediënten</h3>
+    <div id="editIngList"></div>
+    <button class="linkbtn" type="button" onclick="addEditIngredientRow()">+ Ingrediënt toevoegen</button>
+    <h3>Bereiding</h3>
+    <div id="editStepList"></div>
+    <button class="linkbtn" type="button" onclick="addEditStepRow()">+ Stap toevoegen</button>
+    <div id="editRecipeMsg" class="badge serv-note hidden" style="color:#ff3b30"></div>
+    <div class="controls" style="margin-top:16px">
+      <button class="actionbtn" type="button" onclick="saveEditRecipe()">Opslaan</button>
+      <button type="button" onclick="cancelEditRecipe()">Annuleren</button>
+    </div>
   </div>
 </section>
 
@@ -1273,7 +1304,7 @@ function renderRecipes(){
     const ta=document.createElement('textarea'); ta.id='note-'+r.id; ta.placeholder='Bijv. lekker met extra knoflook…'; ta.value=recipeNotes[r.id]||'';
     ta.oninput=()=>{ const v=ta.value; if(v.trim()) recipeNotes[r.id]=v; else delete recipeNotes[r.id]; saveNotes(); };
     noteWrap.append(nl,ta); body.appendChild(noteWrap);
-    const editBtn=document.createElement('button'); editBtn.className='linkbtn'; editBtn.style.cssText='display:block;padding:8px 0'; editBtn.textContent='✏️ Titel wijzigen'; editBtn.onclick=(e)=>{ e.stopPropagation(); renameRecipe(r.id); };
+    const editBtn=document.createElement('button'); editBtn.className='linkbtn'; editBtn.style.cssText='display:block;padding:8px 0'; editBtn.textContent='✏️ Recept bewerken'; editBtn.onclick=(e)=>{ e.stopPropagation(); openEditRecipe(r.id); };
     body.appendChild(editBtn);
     const rm=document.createElement('button'); rm.className='rmrecipe'; rm.textContent='Verwijder recept'; rm.onclick=()=>deleteRecipe(r.id);
     body.appendChild(rm);
@@ -1306,17 +1337,91 @@ function surprise(){
   requestAnimationFrame(()=>{ const el=document.getElementById('recipe-'+r.id); if(el){ el.classList.add('expanded'); el.scrollIntoView({behavior:'smooth',block:'start'}); } });
 }
 
-function renameRecipe(id){
+/* ---------- RECEPT BEWERKEN (naam, ingrediënten, bereiding) ---------- */
+let editingRecipeId=null, editIng=[], editSteps=[];
+function openEditRecipe(id){
   const r=recipeById[id]; if(!r) return;
-  const nt=prompt('Nieuwe titel voor dit recept:', r.title);
-  if(nt===null) return;
-  const t=nt.trim();
-  if(!t || t===r.title) return;
-  const idx=customRecipes.findIndex(x=>x.id===id);
+  editingRecipeId=id;
+  editIng=r.ing.map(g=>({q:g.q,u:g.u||'',n:g.n||'',c:g.c||CATS[0][0]}));
+  editSteps=r.steps.slice();
+  document.getElementById('editTitle').value=r.title;
+  const msg=document.getElementById('editRecipeMsg'); msg.textContent=''; msg.classList.add('hidden');
+  renderEditIngList(); renderEditStepList();
+  /* backTarget bewust ONaangeraakt: dit scherm is een tussenstap op de Recepten-pagina,
+     dus 'Terug' hier moet gewoon terug naar Recepten (zie goBack()) zonder de eventueel
+     al ingestelde terugroute (bv. terug naar Boodschappen) te overschrijven. */
+  show('editRecipeView'); setHeader('editRecipe');
+  window.scrollTo(0,0);
+}
+function renderEditIngList(){
+  const el=document.getElementById('editIngList');
+  el.innerHTML=editIng.map((g,i)=>
+    '<div class="ingrow" data-i="'+i+'">'+
+      '<div class="ingrow-top">'+
+        '<input class="ing-name" type="text" placeholder="Ingrediënt (bijv. kipfilet)" value="'+esc(g.n)+'">'+
+        '<button type="button" class="del ing-del" aria-label="Ingrediënt verwijderen">✕</button>'+
+      '</div>'+
+      '<div class="ingrow-bottom">'+
+        '<input class="ing-qty" type="text" inputmode="decimal" placeholder="Aantal" value="'+esc(g.q==null?'':g.q)+'">'+
+        '<input class="ing-unit" type="text" placeholder="Eenheid" value="'+esc(g.u)+'">'+
+        '<select class="ing-cat" aria-label="Categorie">'+CATS.map(([k,label])=>'<option value="'+k+'"'+(g.c===k?' selected':'')+'>'+esc(label)+'</option>').join('')+'</select>'+
+      '</div>'+
+    '</div>'
+  ).join('');
+  el.querySelectorAll('.ingrow').forEach(row=>{
+    const i=+row.dataset.i;
+    row.querySelector('.ing-name').oninput=(e)=>{ editIng[i].n=e.target.value; };
+    row.querySelector('.ing-qty').oninput=(e)=>{ const v=e.target.value.trim().replace(',','.'); editIng[i].q=v===''?null:parseFloat(v); };
+    row.querySelector('.ing-unit').oninput=(e)=>{ editIng[i].u=e.target.value; };
+    row.querySelector('.ing-cat').onchange=(e)=>{ editIng[i].c=e.target.value; };
+    row.querySelector('.ing-del').onclick=()=>{ editIng.splice(i,1); renderEditIngList(); };
+  });
+}
+function addEditIngredientRow(){
+  editIng.push({q:null,u:'',n:'',c:CATS[0][0]});
+  renderEditIngList();
+  const names=document.querySelectorAll('#editIngList .ing-name');
+  const last=names[names.length-1]; if(last) last.focus();
+}
+function renderEditStepList(){
+  const el=document.getElementById('editStepList');
+  el.innerHTML=editSteps.map((s,i)=>
+    '<div class="steprow" data-i="'+i+'">'+
+      '<span class="stepnum">'+(i+1)+'.</span>'+
+      '<textarea class="step-text" placeholder="Beschrijf deze stap…">'+esc(s)+'</textarea>'+
+      '<button type="button" class="del step-del" aria-label="Stap verwijderen">✕</button>'+
+    '</div>'
+  ).join('');
+  el.querySelectorAll('.steprow').forEach(row=>{
+    const i=+row.dataset.i;
+    row.querySelector('.step-text').oninput=(e)=>{ editSteps[i]=e.target.value; };
+    row.querySelector('.step-del').onclick=()=>{ editSteps.splice(i,1); renderEditStepList(); };
+  });
+}
+function addEditStepRow(){
+  editSteps.push('');
+  renderEditStepList();
+  const areas=document.querySelectorAll('#editStepList .step-text');
+  const last=areas[areas.length-1]; if(last) last.focus();
+}
+function cancelEditRecipe(){ editingRecipeId=null; showTab('recipes'); }
+function saveEditRecipe(){
+  const msg=document.getElementById('editRecipeMsg');
+  const showMsg=(t)=>{ msg.textContent=t; msg.classList.remove('hidden'); };
+  const title=document.getElementById('editTitle').value.trim();
+  if(!title){ showMsg('Vul een naam in.'); return; }
+  const ing=editIng.map(g=>({q:(g.q==null||isNaN(g.q))?null:g.q, u:(g.u||'').trim(), n:(g.n||'').trim(), c:g.c||CATS[0][0]})).filter(g=>g.n);
+  if(!ing.length){ showMsg('Voeg minstens 1 ingrediënt toe.'); return; }
+  const steps=editSteps.map(s=>s.trim()).filter(Boolean);
+  if(!steps.length){ showMsg('Voeg minstens 1 bereidingsstap toe.'); return; }
+  const idx=customRecipes.findIndex(x=>x.id===editingRecipeId);
   if(idx<0) return;
-  customRecipes[idx]=Object.assign({},customRecipes[idx],{title:t});
+  customRecipes[idx]=Object.assign({},customRecipes[idx],{title,ing,steps});
   saveCustom(); rebuildIndex();
-  renderRecipes(); refreshHome();
+  const id=editingRecipeId; editingRecipeId=null;
+  renderChips(); renderRecipes(); refreshHome();
+  showTab('recipes');
+  requestAnimationFrame(()=>{ const el=document.getElementById('recipe-'+id); if(el){ el.classList.add('expanded'); el.scrollIntoView({behavior:'instant',block:'start'}); } });
 }
 /* Bv. handig als de AI een recept als lunch herkent terwijl het eigenlijk een diner is. */
 function setRecipeMeal(id,meal){
@@ -1357,9 +1462,10 @@ function setHeader(view){
   if(view==='recipes'){ t.textContent='Recepten'; s.textContent='Al je recepten. Aantal personen kies je per week bij de boodschappen.'; b.classList.remove('hidden'); }
   if(view==='sync'){ t.textContent='Samen delen'; s.textContent='Deel je lijst live met een ander toestel.'; b.classList.remove('hidden'); }
   if(view==='add'){ t.textContent='Recept toevoegen'; s.textContent='Link of foto — de AI doet de rest.'; b.classList.remove('hidden'); }
+  if(view==='editRecipe'){ t.textContent='Recept bewerken'; s.textContent='Pas de naam, ingrediënten of bereiding aan.'; b.classList.remove('hidden'); }
 }
 function show(id){
-  ['homeView','shoppingView','recipesView','syncView','addView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id));
+  ['homeView','shoppingView','recipesView','syncView','addView','editRecipeView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id));
   document.body.classList.toggle('home-mode',id==='homeView');
   const h=document.querySelector('header'); if(h) h.classList.toggle('hidden',id==='homeView');
 }
@@ -1368,6 +1474,9 @@ function goHome(){ backTarget=null; show('homeView'); setHeader('home'); refresh
    zodat 'Terug' je 1 stap terugbrengt in plaats van meteen helemaal naar het beginscherm. */
 let backTarget=null;
 function goBack(){
+  /* Het bewerkscherm is een tussenstap op Recepten: 'Terug' daar sluit 'm gewoon af
+     (net als Annuleren), zonder de eventueel al ingestelde terugroute te verbruiken. */
+  if(!document.getElementById('editRecipeView').classList.contains('hidden')){ cancelEditRecipe(); return; }
   if(backTarget){ const fn=backTarget; backTarget=null; fn(); }
   else goHome();
 }
@@ -1637,7 +1746,7 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='50';
+const APP_VERSION='51';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
