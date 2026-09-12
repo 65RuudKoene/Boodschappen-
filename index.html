@@ -47,8 +47,8 @@ body.home-mode{background:#f5ead8}
   --h-sage500:#8fa073;--h-sage600:#728157;--h-sage800:#3d472b;--h-sage900:#272e1b;--h-cream:#fff2eb;
   color:var(--h-text);padding:calc(18px + env(safe-area-inset-top)) 4px 8px;display:flex;flex-direction:column;gap:22px
 }
-#homeView .h-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--h-n600)}
-#homeView .h-top .h-clock{font-weight:700}
+#homeView .h-top{display:flex;justify-content:flex-end;align-items:center;gap:14px;font-size:13px;color:var(--h-n600)}
+#homeView .h-top .h-help{color:var(--h-acc700);font-weight:700;text-decoration:none}
 #homeView .h-top .h-week{font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 #homeView .h-greet{font-size:40px;line-height:1;margin:0;font-weight:800;letter-spacing:-.02em;color:var(--h-acc800)}
 #homeView .h-status{margin:10px 0 0;font-size:16px;line-height:1.5;color:var(--h-n700);max-width:300px;text-wrap:pretty}
@@ -349,7 +349,7 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
 
 <section id="homeView">
   <div class="h-top">
-    <span class="h-clock" id="homeClock"></span>
+    <a class="h-help" href="https://claude.ai/code/artifact/817f6a86-90c9-47cc-9231-f221059bf093" target="_blank" rel="noopener noreferrer">📖 Handleiding</a>
     <span class="h-week" id="homeWeekTag"></span>
   </div>
 
@@ -1771,7 +1771,7 @@ async function confirmAddRecipe(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='54';
+const APP_VERSION='55';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
@@ -1957,7 +1957,6 @@ function refreshHome(){
   set('homeGreet',homeGreeting());
   const npEl=document.getElementById('homeNamePrompt');
   if(npEl) npEl.classList.toggle('hidden',!homeShouldAskName());
-  set('homeClock',new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}));
   set('homeWeekTag','Week '+now.week+' \u00b7 deze week');
 
   let status;
