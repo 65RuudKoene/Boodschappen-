@@ -466,9 +466,11 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
       <button class="pickbtn secondary" onclick="openProdEditor(null)">＋ Handmatig</button>
     </div>
     <div class="prod-msg" id="prodWeekNote"></div>
+    <button class="linkbtn hidden" id="prodFixCats" onclick="fixProdCats()">✨ Ontbrekende categorieën aanvullen</button>
     <div class="search">
       <input id="prodSearch" type="search" inputmode="search" placeholder="Zoek in je producten…" autocomplete="off">
     </div>
+    <div class="chips" id="prodFilter"></div>
     <div id="prodList"></div>
   </div>
 </section>
@@ -626,7 +628,7 @@ const SEED_RECIPES = [
     steps:["Neem een ruime pan en vul met 1 liter water. Voeg de bouillonblokjes toe en breng tegen de kook.","Voeg de fijngesneden knoflook, de grofgehakte ui, ketjap manis, djahé, gemalen laos, salamblaadjes en de gekneusde stengel sereh toe.","Voeg de kipfilet toe. Doe het deksel op de pan en laat de kip in 20-30 minuten gaar koken.","Kook ondertussen de rijst en kook de eieren in 6 minuten halfzacht.","Haal de kipfilet uit de pan en trek het vlees met twee vorken in dunne reepjes (pulled). Zet apart.","Blancheer de schoongemaakte taugé 1 minuutje in kokend water en spoel af onder koud water.","Neem een diep bord: begin met rijst, dan de kip, taugé en een gehalveerd eitje. Schenk de hete soep erover en maak af met verse peterselie, gebakken uitjes en eventueel sambal of chilisaus."] }
 ];
 
-const CATS=[["groente","Groente & fruit"],["vlees","Vlees"],["zuivel","Zuivel & gekoeld"],["brood","Brood & bakkerij"],["pasta","Pasta, rijst & aardappelen"],["pot","Potten, blikken & sauzen"],["voorraad","Noten, kruiden & voorraad"]];
+const CATS=[["groente","Groente & fruit"],["vlees","Vlees"],["vis","Vis"],["zuivel","Zuivel & gekoeld"],["brood","Brood & bakkerij"],["pasta","Pasta, rijst & aardappelen"],["pot","Potten, blikken & sauzen"],["voorraad","Noten, kruiden & voorraad"],["dranken","Dranken"],["diepvries","Diepvries"],["huishouden","Huishouden & verzorging"]];
 /* Alle recepten (basisrecepten + via AI toegevoegde) staan hier samen en synchroniseren mee via Supabase. */
 let customRecipes=JSON.parse(localStorage.getItem('custom-recipes-v1')||'[]');
 function allRecipes(){ return customRecipes; }
@@ -1825,7 +1827,7 @@ async function confirmAddRecipe(){
    Een tik op + zet het als zelf-toegevoegd item (manualAll) op de lijst van de bekeken week,
    met pid=product-id zodat we weten dat het al op de lijst staat. */
 const OFF_URL='https://world.openfoodfacts.org/api/v2/product/';
-let prodDraft=null, scanState=null;
+let prodDraft=null, scanState=null, prodCatTouched=false, prodFilter='all';
 function prodListText(p){ return p.b && p.n.toLowerCase().indexOf(p.b.toLowerCase())<0 ? p.n+' ('+p.b+')' : p.n; }
 function prodOnList(p){ return (manualAll[curKey()]||[]).some(m=>m.pid===p.id); }
 function showProducts(){ show('productsView'); setHeader('products'); closeProdEditor(); renderProducts(); window.scrollTo(0,0); }
@@ -1834,9 +1836,19 @@ function renderProducts(){
   const el=document.getElementById('prodList');
   const yw=isoWeek(viewDate);
   document.getElementById('prodWeekNote').textContent='Toevoegen aan boodschappenlijst week '+yw.week+' · '+products.length+' product'+(products.length===1?'':'en')+' in je catalogus';
+  const fixable=products.filter(p=>!p.c&&guessCatFromName(p.n)).length;
+  const fb=document.getElementById('prodFixCats'); fb.classList.toggle('hidden',!fixable); fb.textContent='\u2728 Categorie aanvullen voor '+fixable+' product'+(fixable===1?'':'en');
   const match=p=>!q || (p.n+' '+(p.b||'')+' '+(p.bc||'')).toLowerCase().indexOf(q)>=0;
-  const shown=products.filter(match);
-  if(!shown.length){ el.innerHTML='<div class="empty">'+(q?'Geen producten gevonden voor “'+esc(q)+'”.':'Nog geen producten.<br>Scan een streepjescode of voeg er handmatig een toe.')+'</div>'; return; }
+  const catOf=p=>CATS.some(c=>c[0]===p.c)?p.c:'';
+  /* filterknoppen: Alles, Op de lijst, en alleen categorieën waar producten in zitten */
+  const onCount=products.filter(prodOnList).length;
+  const chips=[['all','Alles',products.length],['list','\u2713 Op de lijst',onCount]];
+  CATS.concat([['','Overig']]).forEach(([ck,label])=>{ const n=products.filter(p=>catOf(p)===ck).length; if(n) chips.push([ck||'_none',label,n]); });
+  if(!chips.some(c=>c[0]===prodFilter)) prodFilter='all';
+  document.getElementById('prodFilter').innerHTML=chips.map(([k,label,n])=>'<button class="chip'+(prodFilter===k?' active':'')+'" data-f="'+k+'">'+esc(label)+' <span style="opacity:.7">'+n+'</span></button>').join('');
+  const inFilter=p=>prodFilter==='all' || (prodFilter==='list'?prodOnList(p):catOf(p)===(prodFilter==='_none'?'':prodFilter));
+  const shown=products.filter(p=>match(p)&&inFilter(p));
+  if(!shown.length){ el.innerHTML='<div class="empty">'+(prodFilter==='list'&&!q?'Nog niets op de lijst. Tik op + bij een product.':q?'Geen producten gevonden voor “'+esc(q)+'”.':'Nog geen producten.<br>Scan een streepjescode of voeg er handmatig een toe.')+'</div>'; return; }
   const groups=CATS.concat([['','Overig']]);
   let html='';
   groups.forEach(([ck,label])=>{
@@ -1852,6 +1864,15 @@ function renderProducts(){
   });
   el.innerHTML=html;
 }
+function fixProdCats(){
+  const todo=products.filter(p=>!p.c&&guessCatFromName(p.n));
+  if(!todo.length) return;
+  if(!confirm('Voor '+todo.length+' product'+(todo.length===1?'':'en')+' zonder categorie een categorie kiezen op basis van de naam? Je kunt ze daarna nog aanpassen.')) return;
+  todo.forEach(p=>{ p.c=guessCatFromName(p.n); });
+  saveProducts();
+  Object.keys(manualAll).forEach(k=>(manualAll[k]||[]).forEach(m=>{ const p=products.find(x=>x.id===m.pid); if(p) m.c=p.c; })); saveManual();
+  renderProducts(); refreshHome();
+}
 function toggleProdOnList(id){
   const p=products.find(x=>x.id===id); if(!p) return;
   const key=curKey(), arr=manualAll[key]=manualAll[key]||[];
@@ -1866,12 +1887,16 @@ document.getElementById('prodList').addEventListener('click',function(e){
   else openProdEditor(products.find(x=>x.id===b.dataset.id)||null);
 });
 document.getElementById('prodSearch').addEventListener('input',renderProducts);
+document.getElementById('prodFilter').addEventListener('click',function(e){
+  const b=e.target.closest('button[data-f]'); if(!b) return;
+  prodFilter=b.dataset.f; renderProducts();
+});
 
 /* --- bewerken / toevoegen --- */
 function closeProdEditor(){ prodDraft=null; document.getElementById('prodEditCard').classList.add('hidden'); document.getElementById('prodListCard').classList.remove('hidden'); }
 function openProdEditor(p,draft,note){
   const d=draft||(p?{id:p.id,n:p.n,b:p.b||'',c:p.c||'',bc:p.bc||'',img:p.img||''}:{n:'',b:'',c:'',bc:'',img:''});
-  prodDraft=d; const isNew=!d.id;
+  prodDraft=d; prodCatTouched=!!d.c||!!d.id; const isNew=!d.id;
   const card=document.getElementById('prodEditCard');
   card.innerHTML='<h2>'+(isNew?'Product toevoegen':'Product bewerken')+'</h2>'+
     '<div class="prod-msg">'+esc(note||'')+'</div>'+
@@ -1883,6 +1908,12 @@ function openProdEditor(p,draft,note){
     '<div class="btnrow"><button onclick="closeProdEditor()">Annuleren</button><button class="actionbtn" onclick="saveProdEditor(false)">Opslaan</button></div>'+
     (isNew?'<div class="btnrow"><button class="pickbtn" onclick="saveProdEditor(true)">Opslaan + op lijst</button></div>':'<div class="btnrow"><button class="prod-del" onclick="deleteProd()">Verwijderen</button></div>');
   document.getElementById('prodListCard').classList.add('hidden'); card.classList.remove('hidden');
+  document.getElementById('pfCat').onchange=()=>{ prodCatTouched=true; };
+  document.getElementById('pfName').oninput=()=>{
+    if(prodCatTouched) return;
+    const g=guessCatFromName(document.getElementById('pfName').value);
+    document.getElementById('pfCat').value=g;
+  };
   window.scrollTo(0,0);
 }
 function saveProdEditor(addToList){
@@ -1907,11 +1938,49 @@ function deleteProd(){
 }
 
 /* --- Open Food Facts --- */
-function guessCat(tags){
-  const t=(tags||[]).join(' ');
-  const map=[['groente',/fruit|vegetable|salad/],['vlees',/meat|fish|seafood|poultry|sausage|ham/],['zuivel',/dairie|milk|cheese|yogurt|yoghurt|egg|butter|cream/],['brood',/bread|bakery|pastr|baguette/],['pasta',/pasta|rice|potato|noodle|cereal/],['pot',/canned|sauce|soup|jar|condiment|preserve/],['voorraad',/nut|spice|herb|snack|chocolate|coffee|tea|spread|biscuit|sugar|oil/]];
-  for(const [c,re] of map) if(re.test(t)) return c;
+/* Categorie-gok. Eerst via de categorie-tags van Open Food Facts (exacte tags, want generieke
+   ouder-tags als 'plant-based-foods-and-beverages' of 'fish-and-meat-and-eggs' staan op van alles),
+   daarna via woorden in de productnaam. De volgorde van de regels is bewust: specifiek vóór algemeen
+   (bijv. diepvries/blik/drinken vóór groente en vis). */
+const TAG_RULES=[
+  ['huishouden',/^(household-products|cleaning-products|hygiene|personal-care|cosmetics|toilet-paper|paper-products|pet-foods|cat-foods|dog-foods|diapers|detergents|non-food-products)$/],
+  ['diepvries',/^(frozen-foods|frozen-desserts|ice-creams-and-sorbets|ice-creams|frozen-.+)$/],
+  ['zuivel',/^(dairies|milks|cheeses|yogurts|yoghurts|butters|creams|eggs|chicken-eggs|fermented-milk-products|dairy-desserts|dairy-substitutes|milk-substitutes|plant-based-milk-alternatives|plant-milks|margarines|spreadable-fats|meat-analogues|meat-alternatives|vegetarian-.+|.+-cheeses|.+-yogurts|.+-yoghurts)$/],
+  ['dranken',/^(beverages|waters|spring-waters|mineral-waters|carbonated-drinks|sodas|colas|juices|fruit-juices|fruit-based-beverages|nectars|iced-teas|teas|coffees|beers|wines|alcoholic-beverages|non-alcoholic-beverages|energy-drinks|sweetened-beverages|syrups|.+-juices|.+-waters|.+-sodas|.+-beers|.+-wines|.+-teas)$/],
+  ['pot',/^(canned-.+|preserved-.+|jams|marmalades|honeys|sauces|.+-sauces|soups|condiments|pickles|ketchup|mustards|mayonnaises|dressings|salad-dressings|spreads|sweet-spreads|peanut-butters|chocolate-spreads|tomato-purees|passata|olives|pickled-.+)$/],
+  ['vis',/^(fishes|fishes-and-their-products|seafood|fish|fresh-fishes|smoked-fishes|fish-fillets|crustaceans|molluscs|shrimps|prawns)$|^(salmons?|tunas?|cods?|herrings?|mackerels?|trouts?|pangasius)(-.+)?$/],
+  ['vlees',/^(meats|meats-and-their-products|fresh-meats|raw-meats|prepared-meats|meat-based-products|poultries|chickens|turkeys|beef|pork|lambs|sausages|hams|bacons|charcuteries|cold-cuts|minced-meats|cooked-hams|dry-sausages)$/],
+  ['brood',/^(breads|bakery|breakfast-breads|viennoiseries|pastries|baguettes|croissants|buns|wraps|tortillas|pitas|rolls|toasts|sandwich-breads|bread-rolls)$/],
+  ['pasta',/^(pastas|dry-pastas|fresh-pastas|rices|noodles|instant-noodles|couscous|potatoes|fresh-potatoes|gnocchi|quinoa|bulgur|.+-pastas|.+-rices)$/],
+  ['groente',/^(fresh-vegetables|fresh-fruits|fresh-fruits-and-vegetables|vegetables|fruits|salads|fresh-salads|fresh-herbs|berries|citrus|apples|bananas|tomatoes|cucumbers|carrots|onions|avocados|mushrooms|leaf-vegetables|root-vegetables|.+-fruits|.+-vegetables)$/],
+  ['voorraad',/^(nuts|peanuts|seeds|spices|seasonings|salts|sugars|flours|oils|olive-oils|vinegars|snacks|salty-snacks|sweet-snacks|biscuits|biscuits-and-cakes|cakes|chocolates|confectioneries|candies|chips|crisps|crackers|breakfast-cereals|cereals|mueslis|oat-flakes|popcorn|dried-fruits|baking-aids)$/]
+];
+/* Nederlandse woorden in de naam. Korte woorden met woordgrens (\b) om vals-positieven te voorkomen. */
+const NAME_RULES=[
+  ['voorraad',/rijstwafel|rijstebrij/],
+  ['pot',/pindakaas|kokos(melk|room)|appelmoes|hazelnootpasta|chocoladepasta|hagelslag|tomatenpuree|tomatenblokjes|gepelde tomaten|passata|currypasta/],
+  ['huishouden',/wc-?papier|toiletpapier|keukenrol|vuilniszak|afwas|wasmiddel|wasverzachter|schoonmaak|allesreiniger|shampoo|douchegel|tandpasta|tandenborstel|\bzeep|deodorant|luiers?|tampons?|maandverband|kattenvoer|hondenvoer|kattenbak|aluminiumfolie|bakpapier|batterij|batterijen|\bspons|zakdoekjes|tissues?|\bkaars/],
+  ['diepvries',/diepvries|\bijs\b|roomijs|ijsjes|pizza|\bpatat|\bfriet|bladerdeeg|vissticks|\bnuggets|bevroren/],
+  ['dranken',/\bwater\b|bronwater|\bspa\b|\bcola|\bfanta\b|sprite|ice ?tea|limonade|siroop|\bsap\b|sinaasappelsap|appelsap|jus d.?orange|\bbier\b|\bwijn\b|prosecco|champagne|\bkoffie|\bthee\b|\btea\b|energydrank|frisdrank|tonic|radler|\bpils\b|sparkling/],
+  ['pot',/\bblik(je|ken)?\b|conserve|in blik|\bpot\b|potje|\bsaus\b|sauzen|ketchup|mayonaise|mosterd|\bpesto|\bsoep\b|bouillon|kikkererwten|\bbonen\b|\blinzen\b|\bmais\b|olijven|augurk|zuurkool|sambal|ketjap|sojasaus|\bjam\b|\bhoning|stroop|tapenade|kappertjes|sriracha|dressing/],
+  ['vis',/zalm|tonijn|kabeljauw|garna|\bharing|makreel|forel|pangasius|tilapia|schol(filet)?\b|zeewolf|\bvis\b|visfilet|mosselen|\bmossel|kreeft|\bkrab|inktvis|ansjovis|sushi|visstick/],
+  ['vlees',/\bkip|kippen|gehakt|\brund|varkens?|biefstuk|\bworst|\bspek|\bham\b|rookworst|kalkoen|\blam\b|lamsvlees|schnitzel|burger|saucijs|chorizo|salami|vlees|drumstick|karbonade|bacon|ossenhaas|spare ?ribs|braadworst|gyros|shoarma|cervelaat|leverworst|pastrami|rosbief|fricandeau|filet americain|kipfilet/],
+  ['zuivel',/\bmelk|yoghurt|yogurt|kwark|\bkaas|\bkazen|roomboter|\bboter\b|margarine|slagroom|\broom\b|\beieren\b|\bei\b|\bvla\b|zuivel|cr[eè]me fra[iî]che|mozzarella|\bfeta\b|parmezaan|mascarpone|ricotta|h[uü]ttenk|cottage|skyr|karnemelk|smeerkaas|pudding|toetje|hummus|vegetarisch|vegan(istisch)?e? (burger|gehakt|worst)/],
+  ['brood',/\bbrood|broodje|\bbol(len)?\b|stokbrood|croissant|baguette|pistolet|\bwraps?\b|tortilla|\bpita|beschuit|krentenbol|\btaart|gebak|\bcake|donut|appelflap|toast|ontbijtkoek|bagel|focaccia|ciabatta|bakkerij|stroopwafel/],
+  ['pasta',/pasta|spaghetti|macaroni|penne|fusilli|lasagne|tagliatelle|rijst\b|\brijst|couscous|noodles?|\bnasi\b|\bbami\b|\bmie\b|aardappel|krieltjes|gnocchi|quinoa|bulgur|polenta/],
+  ['groente',/groente|\bsla\b|salade|tomaat|tomaten|komkommer|paprika\b|\bui\b|\buien\b|knoflook|wortel|\bpeen\b|broccoli|bloemkool|spinazie|courgette|aubergine|\bprei\b|champignon|paddenstoel|sperziebonen|boerenkool|andijvie|spruitjes|rucola|veldsla|ijsbergsla|avocado|banaan|bananen|\bappels?\b|\bpeer\b|peren|sinaasappel|mandarijn|citroen|limoen|druiven|aardbei|framboos|frambozen|bessen|meloen|mango|ananas|kiwi|\bfruit|peterselie|koriander|basilicum|bieslook|\bmunt\b|gember|pompoen|\bbiet|radijs|selderij|venkel|asperge|witlof|koolrabi|\bkool\b|paksoi|snoeptomaat|cherrytomaat|dadels?/],
+  ['voorraad',/\bnoten\b|pinda|cashew|amandel|walnoot|hazelnoot|kruiden|\bpeper\b|\bzout\b|paprikapoeder|kerrie|komijn|kaneel|specerij|\bbloem\b|suiker|\bolie\b|olijfolie|azijn|bakpoeder|\bgist\b|havermout|muesli|cornflakes|granola|chips\b|koekjes?|\bkoek\b|chocolade|snoep|\bdrop\b|\breep\b|biscuit|rijstwafel|popcorn|borrelnoot|rozijnen|pitten|chiazaad|lijnzaad|pannenkoekmix|vanille|cacao/]
+];
+function guessCatFromName(name){
+  const t=(name||'').toLowerCase();
+  if(!t) return '';
+  for(const [c,re] of NAME_RULES) if(re.test(t)) return c;
   return '';
+}
+function guessCat(tags,name){
+  const list=(tags||[]).map(t=>String(t).replace(/^[a-z]{2}:/,''));
+  for(const [c,re] of TAG_RULES) if(list.some(t=>re.test(t))) return c;
+  return guessCatFromName(name);
 }
 async function lookupBarcode(code){
   const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),8000);
@@ -1921,7 +1990,7 @@ async function lookupBarcode(code){
     const j=await r.json(); if(j.status!==1||!j.product) return null;
     const pr=j.product, name=(pr.product_name_nl||pr.product_name||'').trim();
     if(!name) return null;
-    return {n:name+(pr.quantity?' '+pr.quantity:''), b:(pr.brands||'').split(',')[0].trim(), c:guessCat(pr.categories_tags), bc:code, img:pr.image_front_small_url||''};
+    return {n:name+(pr.quantity?' '+pr.quantity:''), b:(pr.brands||'').split(',')[0].trim(), c:guessCat(pr.categories_tags,name), bc:code, img:pr.image_front_small_url||''};
   }catch(e){ return null; } finally{ clearTimeout(to); }
 }
 async function handleBarcode(code){
@@ -2038,7 +2107,7 @@ async function startScan(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='57';
+const APP_VERSION='59';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];
