@@ -1,4 +1,4 @@
-const CACHE = 'boodschappen-v57';
+const CACHE = 'boodschappen-v58';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './js/supabase.js', './js/zxing.min.js'];
 
 // Nieuwe versie meteen installeren

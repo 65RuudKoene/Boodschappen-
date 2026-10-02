@@ -80,6 +80,12 @@ telefoon + laptop, of twee vensters waarvan één incognito).
 - [ ] Tik op "✓ Op lijst" haalt het product weer van de lijst; product
       verwijderen uit de catalogus laat bestaande lijst-items staan.
 - [ ] Catalogus verschijnt op een tweede toestel (sync, sleutel `products-v1`).
+- [ ] Categorie klopt: gescand product (bijv. zalm, melk, cola, wc-papier) krijgt
+      de juiste categorie; bij handmatig typen verandert de categorie mee
+      met de naam, tot je 'm zelf kiest.
+- [ ] Losse producten staan op de boodschappenlijst in winkelvolgorde:
+      Groente > Vlees > Vis > Zuivel > Brood > Pasta > Potten > Voorraad >
+      Dranken > Diepvries > Huishouden.
 
 ## 7. PWA / installatie
 - [ ] Na een nieuwe deploy: app ververst zichzelf automatisch naar de
