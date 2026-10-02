@@ -470,6 +470,7 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
     <div class="search">
       <input id="prodSearch" type="search" inputmode="search" placeholder="Zoek in je producten…" autocomplete="off">
     </div>
+    <div class="chips" id="prodFilter"></div>
     <div id="prodList"></div>
   </div>
 </section>
@@ -1826,7 +1827,7 @@ async function confirmAddRecipe(){
    Een tik op + zet het als zelf-toegevoegd item (manualAll) op de lijst van de bekeken week,
    met pid=product-id zodat we weten dat het al op de lijst staat. */
 const OFF_URL='https://world.openfoodfacts.org/api/v2/product/';
-let prodDraft=null, scanState=null, prodCatTouched=false;
+let prodDraft=null, scanState=null, prodCatTouched=false, prodFilter='all';
 function prodListText(p){ return p.b && p.n.toLowerCase().indexOf(p.b.toLowerCase())<0 ? p.n+' ('+p.b+')' : p.n; }
 function prodOnList(p){ return (manualAll[curKey()]||[]).some(m=>m.pid===p.id); }
 function showProducts(){ show('productsView'); setHeader('products'); closeProdEditor(); renderProducts(); window.scrollTo(0,0); }
@@ -1838,8 +1839,16 @@ function renderProducts(){
   const fixable=products.filter(p=>!p.c&&guessCatFromName(p.n)).length;
   const fb=document.getElementById('prodFixCats'); fb.classList.toggle('hidden',!fixable); fb.textContent='\u2728 Categorie aanvullen voor '+fixable+' product'+(fixable===1?'':'en');
   const match=p=>!q || (p.n+' '+(p.b||'')+' '+(p.bc||'')).toLowerCase().indexOf(q)>=0;
-  const shown=products.filter(match);
-  if(!shown.length){ el.innerHTML='<div class="empty">'+(q?'Geen producten gevonden voor “'+esc(q)+'”.':'Nog geen producten.<br>Scan een streepjescode of voeg er handmatig een toe.')+'</div>'; return; }
+  const catOf=p=>CATS.some(c=>c[0]===p.c)?p.c:'';
+  /* filterknoppen: Alles, Op de lijst, en alleen categorieën waar producten in zitten */
+  const onCount=products.filter(prodOnList).length;
+  const chips=[['all','Alles',products.length],['list','\u2713 Op de lijst',onCount]];
+  CATS.concat([['','Overig']]).forEach(([ck,label])=>{ const n=products.filter(p=>catOf(p)===ck).length; if(n) chips.push([ck||'_none',label,n]); });
+  if(!chips.some(c=>c[0]===prodFilter)) prodFilter='all';
+  document.getElementById('prodFilter').innerHTML=chips.map(([k,label,n])=>'<button class="chip'+(prodFilter===k?' active':'')+'" data-f="'+k+'">'+esc(label)+' <span style="opacity:.7">'+n+'</span></button>').join('');
+  const inFilter=p=>prodFilter==='all' || (prodFilter==='list'?prodOnList(p):catOf(p)===(prodFilter==='_none'?'':prodFilter));
+  const shown=products.filter(p=>match(p)&&inFilter(p));
+  if(!shown.length){ el.innerHTML='<div class="empty">'+(prodFilter==='list'&&!q?'Nog niets op de lijst. Tik op + bij een product.':q?'Geen producten gevonden voor “'+esc(q)+'”.':'Nog geen producten.<br>Scan een streepjescode of voeg er handmatig een toe.')+'</div>'; return; }
   const groups=CATS.concat([['','Overig']]);
   let html='';
   groups.forEach(([ck,label])=>{
@@ -1878,6 +1887,10 @@ document.getElementById('prodList').addEventListener('click',function(e){
   else openProdEditor(products.find(x=>x.id===b.dataset.id)||null);
 });
 document.getElementById('prodSearch').addEventListener('input',renderProducts);
+document.getElementById('prodFilter').addEventListener('click',function(e){
+  const b=e.target.closest('button[data-f]'); if(!b) return;
+  prodFilter=b.dataset.f; renderProducts();
+});
 
 /* --- bewerken / toevoegen --- */
 function closeProdEditor(){ prodDraft=null; document.getElementById('prodEditCard').classList.add('hidden'); document.getElementById('prodListCard').classList.remove('hidden'); }
@@ -2094,7 +2107,7 @@ async function startScan(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='58';
+const APP_VERSION='59';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];

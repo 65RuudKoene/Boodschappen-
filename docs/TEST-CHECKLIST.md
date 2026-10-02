@@ -86,6 +86,8 @@ telefoon + laptop, of twee vensters waarvan één incognito).
 - [ ] Losse producten staan op de boodschappenlijst in winkelvolgorde:
       Groente > Vlees > Vis > Zuivel > Brood > Pasta > Potten > Voorraad >
       Dranken > Diepvries > Huishouden.
+- [ ] Filterknoppen in Producten: Alles, Op de lijst en per categorie (alleen
+      categorieën met producten); combineert met het zoekveld.
 
 ## 7. PWA / installatie
 - [ ] Na een nieuwe deploy: app ververst zichzelf automatisch naar de
