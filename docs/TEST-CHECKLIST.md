@@ -88,6 +88,7 @@ telefoon + laptop, of twee vensters waarvan één incognito).
       Dranken > Diepvries > Huishouden.
 - [ ] Filterknoppen in Producten: Alles, Op de lijst en per categorie (alleen
       categorieën met producten); combineert met het zoekveld.
+- [ ] Categorie-gok (Producten, handmatig typen): "gehakte knoflook" → groente, "sushirijst" → pasta, "speculoospasta" en "agavesiroop" → pot, "appelsiensap" → dranken, "gehakte tomaten" → pot; "rundergehakt" blijft vlees en "sushi zalm" vis.
 
 ## 6c. Foto-uploads (privacy)
 - [ ] Voeg een recept met een eigen foto toe: de foto laadt, en de

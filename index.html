@@ -1973,13 +1973,13 @@ const TAG_RULES=[
 /* Nederlandse woorden in de naam. Korte woorden met woordgrens (\b) om vals-positieven te voorkomen. */
 const NAME_RULES=[
   ['voorraad',/rijstwafel|rijstebrij/],
-  ['pot',/pindakaas|kokos(melk|room)|appelmoes|hazelnootpasta|chocoladepasta|hagelslag|tomatenpuree|tomatenblokjes|gepelde tomaten|passata|currypasta/],
+  ['pot',/pindakaas|kokos(melk|room)|appelmoes|hazelnootpasta|chocoladepasta|speculoos ?pasta|pindapasta|notenpasta|sesampasta|hagelslag|tomatenpuree|tomatenblokjes|gepelde tomaten|gehakte tomaten|agavesiroop|ahornsiroop|glucosesiroop|passata|currypasta/],
   ['huishouden',/wc-?papier|toiletpapier|keukenrol|vuilniszak|afwas|wasmiddel|wasverzachter|schoonmaak|allesreiniger|shampoo|douchegel|tandpasta|tandenborstel|\bzeep|deodorant|luiers?|tampons?|maandverband|kattenvoer|hondenvoer|kattenbak|aluminiumfolie|bakpapier|batterij|batterijen|\bspons|zakdoekjes|tissues?|\bkaars/],
   ['diepvries',/diepvries|\bijs\b|roomijs|ijsjes|pizza|\bpatat|\bfriet|bladerdeeg|vissticks|\bnuggets|bevroren/],
-  ['dranken',/\bwater\b|bronwater|\bspa\b|\bcola|\bfanta\b|sprite|ice ?tea|limonade|siroop|\bsap\b|sinaasappelsap|appelsap|jus d.?orange|\bbier\b|\bwijn\b|prosecco|champagne|\bkoffie|\bthee\b|\btea\b|energydrank|frisdrank|tonic|radler|\bpils\b|sparkling/],
+  ['dranken',/\bwater\b|bronwater|\bspa\b|\bcola|\bfanta\b|sprite|ice ?tea|limonade|siroop|sap\b|sinaasappelsap|appelsap|jus d.?orange|\bbier\b|\bwijn\b|prosecco|champagne|\bkoffie|\bthee\b|\btea\b|energydrank|frisdrank|tonic|radler|\bpils\b|sparkling/],
   ['pot',/\bblik(je|ken)?\b|conserve|in blik|\bpot\b|potje|\bsaus\b|sauzen|ketchup|mayonaise|mosterd|\bpesto|\bsoep\b|bouillon|kikkererwten|\bbonen\b|\blinzen\b|\bmais\b|olijven|augurk|zuurkool|sambal|ketjap|sojasaus|\bjam\b|\bhoning|stroop|tapenade|kappertjes|sriracha|dressing/],
-  ['vis',/zalm|tonijn|kabeljauw|garna|\bharing|makreel|forel|pangasius|tilapia|schol(filet)?\b|zeewolf|\bvis\b|visfilet|mosselen|\bmossel|kreeft|\bkrab|inktvis|ansjovis|sushi|visstick/],
-  ['vlees',/\bkip|kippen|gehakt|\brund|varkens?|biefstuk|\bworst|\bspek|\bham\b|rookworst|kalkoen|\blam\b|lamsvlees|schnitzel|burger|saucijs|chorizo|salami|vlees|drumstick|karbonade|bacon|ossenhaas|spare ?ribs|braadworst|gyros|shoarma|cervelaat|leverworst|pastrami|rosbief|fricandeau|filet americain|kipfilet/],
+  ['vis',/zalm|tonijn|kabeljauw|garna|\bharing|makreel|forel|pangasius|tilapia|schol(filet)?\b|zeewolf|\bvis\b|visfilet|mosselen|\bmossel|kreeft|\bkrab|inktvis|ansjovis|sushi(?!\s?rijst)|visstick/],
+  ['vlees',/\bkip|kippen|gehakt(?!e)|\brund|varkens?|biefstuk|\bworst|\bspek|\bham\b|rookworst|kalkoen|\blam\b|lamsvlees|schnitzel|burger|saucijs|chorizo|salami|vlees|drumstick|karbonade|bacon|ossenhaas|spare ?ribs|braadworst|gyros|shoarma|cervelaat|leverworst|pastrami|rosbief|fricandeau|filet americain|kipfilet/],
   ['zuivel',/\bmelk|yoghurt|yogurt|kwark|\bkaas|\bkazen|roomboter|\bboter\b|margarine|slagroom|\broom\b|\beieren\b|\bei\b|\bvla\b|zuivel|cr[eè]me fra[iî]che|mozzarella|\bfeta\b|parmezaan|mascarpone|ricotta|h[uü]ttenk|cottage|skyr|karnemelk|smeerkaas|pudding|toetje|hummus|vegetarisch|vegan(istisch)?e? (burger|gehakt|worst)/],
   ['brood',/\bbrood|broodje|\bbol(len)?\b|stokbrood|croissant|baguette|pistolet|\bwraps?\b|tortilla|\bpita|beschuit|krentenbol|\btaart|gebak|\bcake|donut|appelflap|toast|ontbijtkoek|bagel|focaccia|ciabatta|bakkerij|stroopwafel/],
   ['pasta',/pasta|spaghetti|macaroni|penne|fusilli|lasagne|tagliatelle|rijst\b|\brijst|couscous|noodles?|\bnasi\b|\bbami\b|\bmie\b|aardappel|krieltjes|gnocchi|quinoa|bulgur|polenta/],
@@ -2122,7 +2122,7 @@ async function startScan(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='61';
+const APP_VERSION='62';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];
