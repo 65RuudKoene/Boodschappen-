@@ -543,6 +543,7 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
       <input id="addOwnPhotoInput" type="file" accept="image/*" class="hidden">
       <div id="addOwnPhotoThumb" class="photo-thumbs"></div>
     </div>
+    <div id="addLinkMode" class="hidden synced-field"><label for="addLink">Link naar origineel (optioneel, bijv. het filmpje)</label><input id="addLink" type="url" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="https://…"></div>
     <button id="addFetchBtn" class="actionbtn">Ophalen met AI</button>
     <div id="addStatus" class="badge serv-note" style="margin-top:10px"></div>
     <div id="addPreview"></div>
@@ -1348,7 +1349,7 @@ function renderRecipes(){
       '<div class="badge serv-note">Alleen om te bekijken. Voor de boodschappenlijst stel je het aantal personen per week in.</div>'+
       '<h3>Ingrediënten</h3><ul class="ingList">'+r.ing.map(g=>'<li>'+ingText(scaleGroup(g,cardServ))+'</li>').join('')+'</ul>'+
       '<h3>Bereiding</h3><ol class="stepList">'+scaleSteps(r,cardServ).map(x=>'<li>'+x+'</li>').join('')+'</ol>'+
-      (r.source?'<a class="src" href="'+r.source+'" target="_blank" rel="noopener noreferrer">Bekijk origineel recept ↗</a>':'');
+      (r.source?'<a class="src" href="'+esc(r.source)+'" target="_blank" rel="noopener noreferrer">Bekijk origineel recept ↗</a>':'');
     const noteWrap=document.createElement('div'); noteWrap.className='note-wrap';
     const nl=document.createElement('label'); nl.textContent='📝 Mijn notitie'; nl.htmlFor='note-'+r.id;
     const ta=document.createElement('textarea'); ta.id='note-'+r.id; ta.placeholder='Bijv. lekker met extra knoflook…'; ta.value=recipeNotes[r.id]||'';
@@ -1546,7 +1547,7 @@ function showAdd(){
 }
 
 /* ---------- RECEPT TOEVOEGEN VIA AI (link, foto of eigen tekst) ---------- */
-let previewRecipe=null, addMode='url', addPhotos=[], addOwnPhoto=null, previewAssumedServ=BASE_SERV;
+let previewRecipe=null, previewSource='', addMode='url', addPhotos=[], addOwnPhoto=null, previewAssumedServ=BASE_SERV;
 const MAX_ADD_PHOTOS=4;
 function slugify(t){ return (t||'recept').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||'recept'; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -1557,6 +1558,7 @@ function setAddMode(mode){
   document.getElementById('addUrlMode').classList.toggle('hidden',mode!=='url');
   document.getElementById('addPhotoMode').classList.toggle('hidden',mode!=='photo');
   document.getElementById('addTextMode').classList.toggle('hidden',mode!=='text');
+  document.getElementById('addLinkMode').classList.toggle('hidden',mode==='url');
   document.getElementById('addStatus').textContent='';
 }
 /* Comprimeert een foto client-side (max 1400px, JPEG) zodat het uploaden licht blijft. */
@@ -1679,6 +1681,12 @@ async function fetchRecipe(){
     body.images=addPhotos.map(function(p){ return {data:p.base64, mediaType:p.mediaType}; });
     st.textContent='Bezig met uitlezen van de foto\u2019s\u2026 (kan ~15 seconden duren)';
   }
+  /* Optionele link naar het origineel (bijv. een Instagram-filmpje): gaat niet naar de AI, wordt alleen als 'source' bewaard. */
+  let linkSrc='';
+  if(addMode!=='url'){
+    linkSrc=document.getElementById('addLink').value.trim();
+    if(linkSrc && !/^https?:\/\/\S+$/i.test(linkSrc)){ st.textContent='De link moet beginnen met https:// (of laat het veld leeg).'; return; }
+  }
   /* Zorgt dat de toegangscheck van de AI-functie ('bestaat dit huishouden al?') niet kan
      mislopen vlak na het allereerste keer inloggen: syncConnect() zet die markering ook,
      maar niet afgewacht — bij een gloednieuw wachtwoord kan de gebruiker sneller bij
@@ -1691,7 +1699,7 @@ async function fetchRecipe(){
     if(res.error) throw new Error(await extractFnErrorMessage(res.error));
     const r=res.data && res.data.recipe ? res.data.recipe : res.data;
     if(!validRecipe(r)){ throw new Error('geen recept herkend'); }
-    previewRecipe=r;
+    previewRecipe=r; previewSource=linkSrc;
     renderPreview(r);
     st.textContent='Gevonden! Controleer hieronder en voeg toe.';
   }catch(e){ st.textContent='Ophalen mislukt: '+(e&&e.message?e.message:e); }
@@ -1811,12 +1819,15 @@ async function confirmAddRecipe(){
     }
   }
   if(r.source) rec.source=r.source;
+  else if(previewSource) rec.source=previewSource;
   customRecipes.push(rec); saveCustom(); rebuildIndex();
   previewRecipe=null; previewAssumedServ=BASE_SERV;
   addPhotos=[]; renderPhotoThumbs();
   addOwnPhoto=null; renderOwnPhotoThumb();
   const au=document.getElementById('addUrl'); if(au) au.value='';
   const at=document.getElementById('addText'); if(at) at.value='';
+  const al=document.getElementById('addLink'); if(al) al.value='';
+  previewSource='';
   if(addBtn) addBtn.disabled=false;
   st.textContent='';
   document.getElementById('addPreview').innerHTML='';
@@ -2111,7 +2122,7 @@ async function startScan(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='60';
+const APP_VERSION='61';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];

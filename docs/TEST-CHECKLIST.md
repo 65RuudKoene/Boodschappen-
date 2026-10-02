@@ -101,6 +101,7 @@ telefoon + laptop, of twee vensters waarvan één incognito).
       (ook in de stappen), en `tbsp` is `el` en `tsp` is `tl`.
 - [ ] Een Nederlands recept: de titel blijft **letterlijk** zoals in de bron.
 - [ ] (Na wijziging aan `parse-recipe`: handmatig deployen, zie CLAUDE.md.)
+- [ ] Bij **Foto** en **Eigen recept** staat een optioneel veld "Link naar origineel"; vul je een https-link in, dan staat na toevoegen "Bekijk origineel recept ↗" onder het recept. Een ongeldige link (zonder https://) geeft een melding; het veld leeg laten werkt gewoon. Bij **Link** is het veld niet zichtbaar.
 
 ## 7. PWA / installatie
 - [ ] Na een nieuwe deploy: app ververst zichzelf automatisch naar de
