@@ -94,6 +94,14 @@ telefoon + laptop, of twee vensters waarvan één incognito).
       foto-link in het recept bevat **geen** `hh_...` (huishoud-id) maar een
       pad als `.../recipe-photos/p/<24 tekens>.jpg`.
 
+## 6d. AI-import van een recept in een andere taal
+- [ ] Plak een Engels recept (bijv. met cups, oz, tbsp en °F) bij
+      "Eigen recept": titel, ingrediënten en stappen komen in het
+      **Nederlands**, maten zijn metrisch (g/ml/el/tl) en temperaturen in °C
+      (ook in de stappen), en `tbsp` is `el` en `tsp` is `tl`.
+- [ ] Een Nederlands recept: de titel blijft **letterlijk** zoals in de bron.
+- [ ] (Na wijziging aan `parse-recipe`: handmatig deployen, zie CLAUDE.md.)
+
 ## 7. PWA / installatie
 - [ ] Na een nieuwe deploy: app ververst zichzelf automatisch naar de
       nieuwe versie (geen oude gecachete versie die blijft hangen).

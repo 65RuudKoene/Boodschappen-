@@ -28,14 +28,15 @@ const SYS = `Je zet een recept om naar strikte JSON voor een boodschappen-app. A
 Vorm:
 {"title":"...","time":"ca. X min","meal":"ontbijt|lunch|diner|bbq|tussendoor","emoji":"één passende emoji","ing":[{"q":getal-of-null,"u":"eenheid-of-lege-string","n":"ingrediëntnaam","c":"groente|vlees|zuivel|pasta|pot|voorraad"}],"steps":["stap 1","stap 2"]}
 Regels:
-- Reken ALLE hoeveelheden om naar 2 personen (ook de getallen in de bereidingsstappen).
+- Reken eerst alle maten om naar metrisch (zie MATEN) en reken daarna ALLE hoeveelheden om naar 2 personen (ook de getallen in de bereidingsstappen).
 - c = supermarktcategorie: groente (groente & fruit), vlees (vlees & vis), zuivel (zuivel & gekoeld), pasta (pasta, rijst, aardappelen), pot (potten, blikken, sauzen), voorraad (noten, kruiden, olie, voorraad).
 - q = getal (decimaal mag, bijv 0.5) of null als er geen hoeveelheid is (bijv "peper naar smaak").
 - u = eenheid (g, ml, el, tl, teen, stuks, blik, ...) of lege string.
-- Schrijf alles in het Nederlands. Verzin niets wat niet in de bron staat.
+- TAAL: de bron kan in een andere taal staan (bijv. Engels, Spaans, Duits, Frans of Italiaans). Vertaal de ingrediëntnamen, de eenheden en ALLE bereidingsstappen altijd naar het Nederlands. Laat GEEN woorden uit de brontaal staan, behalve merknamen en bekende gerechtnamen. Verzin niets wat niet in de bron staat.
+- MATEN: reken Amerikaanse en Britse maten om naar metrisch, ook in de bereidingsstappen. 1 tbsp = 1 el en 1 tsp = 1 tl (haal die niet door elkaar). 1 cup = 240 ml bij vloeistoffen; bij vaste ingrediënten reken je om naar gram (bijv. 1 cup gekookte rijst ≈ 160 g, 1 cup bloem ≈ 125 g). 1 oz ≈ 28 g, 1 lb ≈ 450 g, 1 stick boter = 115 g, 1 inch ≈ 2,5 cm. Temperaturen van °F naar °C (bijv. 350°F = 180°C, 425°F = 220°C). Rond af op praktische waarden.
 - Als er meerdere foto's zijn, horen ze bij hetzelfde recept (bijv. voor- en achterkant); combineer de informatie.
-- Neem ALLE bereidingsstappen over uit de bron, in dezelfde volgorde en met hetzelfde aantal stappen. Voeg stappen niet samen, vat ze niet in als één stap en sla er geen over — ook niet als een stap kort is.
-- Neem de titel LETTERLIJK en EXACT over zoals die in de bron staat. Parafraseer 'm niet, vertaal geen woorden naar synoniemen en verzin geen alternatieve bewoording.
+- Neem ALLE bereidingsstappen over uit de bron, in dezelfde volgorde en met hetzelfde aantal stappen (de inhoud blijft gelijk; alleen de taal wordt Nederlands en de maten worden metrisch). Voeg stappen niet samen, vat ze niet in als één stap en sla er geen over — ook niet als een stap kort is.
+- Titel: staat de bron in het Nederlands, neem de titel dan LETTERLIJK en EXACT over zoals die in de bron staat. Parafraseer 'm niet, vertaal geen woorden naar synoniemen en verzin geen alternatieve bewoording. Staat de bron in een andere taal, vertaal de titel dan naar natuurlijk Nederlands, maar laat bekende gerechtnamen ongewijzigd (bijv. "Pad Thai", "Tiramisu", "Baked oats", "Poke bowl").
 - Lees de titel bij een foto extra zorgvuldig, letter voor letter — verward woorden niet met woorden die er ongeveer hetzelfde uitzien (bijv. "gerookte" is niet hetzelfde als "geroofde").
 - Als een woord in de titel een lettergreep herhaalt (bijv. "zalmbonbons"), is dat vrijwel altijd opzettelijk en GEEN typfout — neem het exact zo over, verkort of "corrigeer" het niet.`;
 
