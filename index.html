@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://world.openfoodfacts.org; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self';">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff">
@@ -319,6 +319,36 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
 .recipe-head-main:active{transform:none;box-shadow:none}
 .meal-badge,.src{color:var(--terra)}
 .controls{gap:10px;margin:2px 0 10px}
+
+/* ===== Producten (catalogus) ===== */
+#productsView .card h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--terra);margin:2px 0 10px}
+.prod-row{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.prod-row:last-child{border-bottom:0}
+.prod-img{flex:0 0 auto;width:46px;height:46px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:22px}
+.prod-img img{width:100%;height:100%;object-fit:contain}
+.prod-info{flex:1;min-width:0;text-align:left;background:transparent;box-shadow:none;border-radius:12px;padding:2px 0;min-height:0;color:var(--text)}
+.prod-info:active{transform:none;box-shadow:none}
+.prod-name{display:block;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prod-sub{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prod-add{flex:0 0 auto;min-width:44px;background:var(--sage);color:var(--sage-100);font-weight:800;font-size:20px;box-shadow:0 3px 0 var(--sage-dark)}
+.prod-add.on{background:var(--sage-200);color:var(--sage-dark);box-shadow:0 3px 0 var(--sage-400);font-size:15px;padding:0 14px}
+.prod-actions{display:flex;gap:10px;margin:2px 0 10px}
+.prod-actions button{flex:1}
+.prod-form label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:10px 0 4px}
+.prod-form input[type=text],.prod-form input[type=search],.prod-form select{width:100%;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:10px 14px;font-size:16px;min-height:46px}
+.prod-form .prod-img{width:72px;height:72px}
+.prod-form .btnrow{display:flex;gap:10px;margin-top:14px}
+.prod-form .btnrow button{flex:1}
+.prod-del{color:#a33;background:transparent;box-shadow:none}
+.prod-msg{font-size:13px;color:var(--muted);margin:6px 0;min-height:16px}
+.scan-overlay{position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column}
+.scan-overlay video{flex:1;min-height:0;width:100%;object-fit:cover}
+.scan-bar{position:absolute;left:0;right:0;bottom:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:rgba(0,0,0,.65);color:#fff;display:flex;flex-direction:column;gap:10px}
+.scan-frame{position:absolute;left:12%;right:12%;top:30%;height:28%;border:3px solid rgba(255,255,255,.85);border-radius:16px;pointer-events:none}
+.scan-bar .row{display:flex;gap:8px}
+.scan-bar input{flex:1;min-width:0;border:0;border-radius:999px;padding:10px 14px;font-size:16px;min-height:46px}
+.scan-bar button{flex:0 0 auto}
+.scan-msg{font-size:14px;text-align:center}
 </style>
 </head>
 <body>
@@ -392,6 +422,7 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
       <button class="h-sc h-sc-sage" onclick="homeGoRound()"><span class="h-sc-label">Nieuwe ronde starten</span><span class="h-sc-meta" id="homeScRoundMeta"></span></button>
       <button class="h-sc h-sc-sand" onclick="shareList(homeWeekKey())"><span class="h-sc-label">Lijst delen</span><span class="h-sc-meta"></span></button>
       <button class="h-sc h-sc-sage" onclick="homeGoPantry()"><span class="h-sc-label">Voorraadkast</span><span class="h-sc-meta" id="homeScPantryMeta"></span></button>
+      <button class="h-sc h-sc-sage" onclick="showProducts()"><span class="h-sc-label">Producten</span><span class="h-sc-meta" id="homeScProdMeta">losse producten &amp; scannen</span></button>
       <button class="h-sc h-sc-sand" onclick="showAdd()"><span class="h-sc-label">Recept toevoegen met AI</span><span class="h-sc-meta">link of foto</span></button>
     </div>
   </div>
@@ -424,6 +455,21 @@ button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line-strong)}
     <div class="synced-field"><label for="yourFirstNameField">Voornaam</label><input id="yourFirstNameField" type="text" inputmode="text" autocomplete="given-name" placeholder="Bijv. Ruud"></div>
     <div class="synced-field"><label for="yourLastNameField">Achternaam</label><input id="yourLastNameField" type="text" inputmode="text" autocomplete="family-name" placeholder="Bijv. Koene"></div>
     <button id="logoutBtn" class="actionbtn">Uitloggen</button>
+  </div>
+</section>
+
+<section id="productsView" class="hidden">
+  <div class="card prod-form hidden" id="prodEditCard"></div>
+  <div class="card" id="prodListCard">
+    <div class="prod-actions">
+      <button class="pickbtn" onclick="startScan()">📷 Streepjescode scannen</button>
+      <button class="pickbtn secondary" onclick="openProdEditor(null)">＋ Handmatig</button>
+    </div>
+    <div class="prod-msg" id="prodWeekNote"></div>
+    <div class="search">
+      <input id="prodSearch" type="search" inputmode="search" placeholder="Zoek in je producten…" autocomplete="off">
+    </div>
+    <div id="prodList"></div>
   </div>
 </section>
 
@@ -626,6 +672,7 @@ let recipeNotes=JSON.parse(localStorage.getItem('recipe-notes-v1')||'{}');
 /* Favoriete recepten: 1 ster per recept, gecombineerd met het bestaande maaltijdtype-filter
    (Ontbijt/Lunch/Diner/Tussendoor) filter je zo op 'mijn favoriete lunches', 'mijn favoriete diners', etc. */
 let favoriteRecipes=JSON.parse(localStorage.getItem('favorite-recipes-v1')||'[]');
+let products=JSON.parse(localStorage.getItem('products-v1')||'[]');
 let doneHidden=false, pickerOpen=false;
 let pickMeal='alle', pickQuery='', pickDinnerType='alle', pickLunchType='alle', pickRoundId=null, pickFavOnly=false;
 function persist(k,val){ localStorage.setItem(k,JSON.stringify(val)); syncPush(k,val); }
@@ -640,6 +687,7 @@ function savePantrySnapshots(){ persist('pantry-snapshots-v1',pantrySnapshots); 
 function weekHasChecks(key){ const c=checksAll[key]; if(!c) return false; return Object.keys(c).some(function(k){ return c[k]; }); }
 function saveNotes(){ persist('recipe-notes-v1',recipeNotes); }
 function saveCustom(){ persist('custom-recipes-v1',customRecipes); }
+function saveProducts(){ persist('products-v1',products); }
 function saveFavorites(){ persist('favorite-recipes-v1',favoriteRecipes); }
 function isFavorite(id){ return favoriteRecipes.includes(id); }
 function toggleFavorite(id){
@@ -1460,12 +1508,14 @@ function setHeader(view){
   if(view==='home'){ t.textContent='Boodschappen & Recepten'; s.textContent='Kies waar je heen wilt.'; b.classList.add('hidden'); }
   if(view==='shop'){ t.textContent='Boodschappen'; s.textContent='Kies je recepten voor de week; de lijst wordt automatisch samengesteld.'; b.classList.remove('hidden'); }
   if(view==='recipes'){ t.textContent='Recepten'; s.textContent='Al je recepten. Aantal personen kies je per week bij de boodschappen.'; b.classList.remove('hidden'); }
+  if(view==='products'){ t.textContent='Producten'; s.textContent='Je eigen catalogus: tik op + om een product op de lijst van deze week te zetten.'; b.classList.remove('hidden'); }
   if(view==='sync'){ t.textContent='Samen delen'; s.textContent='Deel je lijst live met een ander toestel.'; b.classList.remove('hidden'); }
   if(view==='add'){ t.textContent='Recept toevoegen'; s.textContent='Link of foto — de AI doet de rest.'; b.classList.remove('hidden'); }
   if(view==='editRecipe'){ t.textContent='Recept bewerken'; s.textContent='Pas de naam, ingrediënten of bereiding aan.'; b.classList.remove('hidden'); }
 }
 function show(id){
-  ['homeView','shoppingView','recipesView','syncView','addView','editRecipeView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id));
+  if(typeof closeScan==='function') closeScan();
+  ['homeView','shoppingView','recipesView','syncView','addView','editRecipeView','productsView'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id));
   document.body.classList.toggle('home-mode',id==='homeView');
   const h=document.querySelector('header'); if(h) h.classList.toggle('hidden',id==='homeView');
 }
@@ -1770,11 +1820,189 @@ async function confirmAddRecipe(){
   window.scrollTo(0,0);
 }
 
+/* ---------- PRODUCTEN (catalogus + streepjescode) ----------
+   Product = {id, n: naam, b: merk, c: categorie ('' = overig), bc: streepjescode, img: foto-url}.
+   Een tik op + zet het als zelf-toegevoegd item (manualAll) op de lijst van de bekeken week,
+   met pid=product-id zodat we weten dat het al op de lijst staat. */
+const OFF_URL='https://world.openfoodfacts.org/api/v2/product/';
+let prodDraft=null, scanState=null;
+function prodListText(p){ return p.b && p.n.toLowerCase().indexOf(p.b.toLowerCase())<0 ? p.n+' ('+p.b+')' : p.n; }
+function prodOnList(p){ return (manualAll[curKey()]||[]).some(m=>m.pid===p.id); }
+function showProducts(){ show('productsView'); setHeader('products'); closeProdEditor(); renderProducts(); window.scrollTo(0,0); }
+function renderProducts(){
+  const q=document.getElementById('prodSearch').value.trim().toLowerCase();
+  const el=document.getElementById('prodList');
+  const yw=isoWeek(viewDate);
+  document.getElementById('prodWeekNote').textContent='Toevoegen aan boodschappenlijst week '+yw.week+' · '+products.length+' product'+(products.length===1?'':'en')+' in je catalogus';
+  const match=p=>!q || (p.n+' '+(p.b||'')+' '+(p.bc||'')).toLowerCase().indexOf(q)>=0;
+  const shown=products.filter(match);
+  if(!shown.length){ el.innerHTML='<div class="empty">'+(q?'Geen producten gevonden voor “'+esc(q)+'”.':'Nog geen producten.<br>Scan een streepjescode of voeg er handmatig een toe.')+'</div>'; return; }
+  const groups=CATS.concat([['','Overig']]);
+  let html='';
+  groups.forEach(([ck,label])=>{
+    const items=shown.filter(p=>(CATS.some(c=>c[0]===p.c)?p.c:'')===ck).sort((a,b)=>a.n.localeCompare(b.n,'nl'));
+    if(!items.length) return;
+    html+='<h2 style="margin-top:14px">'+esc(label)+'</h2>';
+    items.forEach(p=>{
+      const on=prodOnList(p);
+      html+='<div class="prod-row"><span class="prod-img">'+(p.img?'<img src="'+esc(p.img)+'" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.remove()">':'🛒')+'</span>'+
+        '<button class="prod-info" data-act="edit" data-id="'+esc(p.id)+'"><span class="prod-name">'+esc(p.n)+'</span><span class="prod-sub">'+esc([p.b,p.bc].filter(Boolean).join(' · ')||'Tik om te bewerken')+'</span></button>'+
+        '<button class="prod-add'+(on?' on':'')+'" data-act="add" data-id="'+esc(p.id)+'" aria-label="'+(on?'Van de lijst halen':'Op de lijst zetten')+'">'+(on?'✓ Op lijst':'+')+'</button></div>';
+    });
+  });
+  el.innerHTML=html;
+}
+function toggleProdOnList(id){
+  const p=products.find(x=>x.id===id); if(!p) return;
+  const key=curKey(), arr=manualAll[key]=manualAll[key]||[];
+  const i=arr.findIndex(m=>m.pid===id);
+  if(i>=0){ arr.splice(i,1); if(!arr.length) delete manualAll[key]; }
+  else arr.push({id:genId(),t:prodListText(p),c:p.c||'',pid:id});
+  saveManual(); renderProducts(); refreshHome();
+}
+document.getElementById('prodList').addEventListener('click',function(e){
+  const b=e.target.closest('button[data-act]'); if(!b) return;
+  if(b.dataset.act==='add') toggleProdOnList(b.dataset.id);
+  else openProdEditor(products.find(x=>x.id===b.dataset.id)||null);
+});
+document.getElementById('prodSearch').addEventListener('input',renderProducts);
+
+/* --- bewerken / toevoegen --- */
+function closeProdEditor(){ prodDraft=null; document.getElementById('prodEditCard').classList.add('hidden'); document.getElementById('prodListCard').classList.remove('hidden'); }
+function openProdEditor(p,draft,note){
+  const d=draft||(p?{id:p.id,n:p.n,b:p.b||'',c:p.c||'',bc:p.bc||'',img:p.img||''}:{n:'',b:'',c:'',bc:'',img:''});
+  prodDraft=d; const isNew=!d.id;
+  const card=document.getElementById('prodEditCard');
+  card.innerHTML='<h2>'+(isNew?'Product toevoegen':'Product bewerken')+'</h2>'+
+    '<div class="prod-msg">'+esc(note||'')+'</div>'+
+    '<span class="prod-img">'+(d.img?'<img src="'+esc(d.img)+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()">':'🛒')+'</span>'+
+    '<label for="pfName">Naam</label><input id="pfName" type="text" autocomplete="off" value="'+esc(d.n)+'" placeholder="Bijv. Halfvolle melk">'+
+    '<label for="pfBrand">Merk (optioneel)</label><input id="pfBrand" type="text" autocomplete="off" value="'+esc(d.b)+'">'+
+    '<label for="pfCat">Categorie</label><select id="pfCat"><option value="">Overig</option>'+CATS.map(c=>'<option value="'+c[0]+'"'+(d.c===c[0]?' selected':'')+'>'+esc(c[1])+'</option>').join('')+'</select>'+
+    '<label for="pfCode">Streepjescode (optioneel)</label><input id="pfCode" type="text" inputmode="numeric" autocomplete="off" value="'+esc(d.bc)+'">'+
+    '<div class="btnrow"><button onclick="closeProdEditor()">Annuleren</button><button class="actionbtn" onclick="saveProdEditor(false)">Opslaan</button></div>'+
+    (isNew?'<div class="btnrow"><button class="pickbtn" onclick="saveProdEditor(true)">Opslaan + op lijst</button></div>':'<div class="btnrow"><button class="prod-del" onclick="deleteProd()">Verwijderen</button></div>');
+  document.getElementById('prodListCard').classList.add('hidden'); card.classList.remove('hidden');
+  window.scrollTo(0,0);
+}
+function saveProdEditor(addToList){
+  const d=prodDraft; if(!d) return;
+  const n=document.getElementById('pfName').value.trim();
+  if(!n){ document.getElementById('pfName').focus(); return; }
+  const bc=document.getElementById('pfCode').value.replace(/\s+/g,'');
+  const p={id:d.id||genId(),n:n,b:document.getElementById('pfBrand').value.trim(),c:document.getElementById('pfCat').value,bc:bc,img:d.img||''};
+  const i=products.findIndex(x=>x.id===p.id);
+  if(i>=0) products[i]=p; else products.push(p);
+  saveProducts();
+  /* bestaand item op de lijst meenemen met de nieuwe naam/categorie */
+  Object.keys(manualAll).forEach(k=>(manualAll[k]||[]).forEach(m=>{ if(m.pid===p.id){ m.t=prodListText(p); m.c=p.c; } })); saveManual();
+  closeProdEditor();
+  if(addToList && !prodOnList(p)) toggleProdOnList(p.id); else renderProducts();
+  refreshHome();
+}
+function deleteProd(){
+  const d=prodDraft; if(!d||!d.id) return;
+  if(!confirm('‘'+d.n+'’ uit je catalogus verwijderen? (Staat het al op een boodschappenlijst, dan blijft het daar staan.)')) return;
+  products=products.filter(x=>x.id!==d.id); saveProducts(); closeProdEditor(); renderProducts(); refreshHome();
+}
+
+/* --- Open Food Facts --- */
+function guessCat(tags){
+  const t=(tags||[]).join(' ');
+  const map=[['groente',/fruit|vegetable|salad/],['vlees',/meat|fish|seafood|poultry|sausage|ham/],['zuivel',/dairie|milk|cheese|yogurt|yoghurt|egg|butter|cream/],['brood',/bread|bakery|pastr|baguette/],['pasta',/pasta|rice|potato|noodle|cereal/],['pot',/canned|sauce|soup|jar|condiment|preserve/],['voorraad',/nut|spice|herb|snack|chocolate|coffee|tea|spread|biscuit|sugar|oil/]];
+  for(const [c,re] of map) if(re.test(t)) return c;
+  return '';
+}
+async function lookupBarcode(code){
+  const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),8000);
+  try{
+    const r=await fetch(OFF_URL+encodeURIComponent(code)+'.json?fields=product_name,product_name_nl,brands,quantity,image_front_small_url,categories_tags',{signal:ctl.signal});
+    if(!r.ok) return null;
+    const j=await r.json(); if(j.status!==1||!j.product) return null;
+    const pr=j.product, name=(pr.product_name_nl||pr.product_name||'').trim();
+    if(!name) return null;
+    return {n:name+(pr.quantity?' '+pr.quantity:''), b:(pr.brands||'').split(',')[0].trim(), c:guessCat(pr.categories_tags), bc:code, img:pr.image_front_small_url||''};
+  }catch(e){ return null; } finally{ clearTimeout(to); }
+}
+async function handleBarcode(code){
+  const have=products.find(p=>p.bc===code);
+  if(have){
+    if(!prodOnList(have)) toggleProdOnList(have.id);
+    document.getElementById('prodWeekNote').textContent='‘'+have.n+'’ stond al in je catalogus en staat nu op de lijst.';
+    return;
+  }
+  const found=await lookupBarcode(code);
+  if(found) openProdEditor(null,found,'Gevonden via Open Food Facts — controleer naam en categorie.');
+  else openProdEditor(null,{n:'',b:'',c:'',bc:code,img:''},'Niet gevonden in Open Food Facts — vul de naam zelf in.');
+}
+
+/* --- scanner --- */
+function loadZxing(){
+  return new Promise((res,rej)=>{
+    if(window.ZXing) return res();
+    const s=document.createElement('script'); s.src='js/zxing.min.js'; s.onload=()=>res(); s.onerror=()=>rej(new Error('scanner niet geladen'));
+    document.head.appendChild(s);
+  });
+}
+function closeScan(){
+  const st=scanState; scanState=null; if(!st) return;
+  st.stopped=true;
+  try{ if(st.reader) st.reader.reset(); }catch(e){}
+  try{ if(st.timer) clearTimeout(st.timer); }catch(e){}
+  try{ if(st.stream) st.stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  if(st.el&&st.el.parentNode) st.el.parentNode.removeChild(st.el);
+}
+async function onScanned(code){
+  if(!scanState||scanState.busy) return;
+  if(!/^\d{8,14}$/.test(code)) return;
+  const st=scanState; st.busy=true;
+  const msg=st.el.querySelector('.scan-msg'); if(msg) msg.textContent='Gevonden: '+code+' — zoeken…';
+  try{ if(st.stream) st.stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  try{ await handleBarcode(code); } finally{ if(scanState===st) closeScan(); }
+}
+async function startScan(){
+  if(scanState) return;
+  const el=document.createElement('div'); el.className='scan-overlay';
+  el.innerHTML='<video playsinline muted></video><div class="scan-frame"></div><div class="scan-bar"><div class="scan-msg">Richt de camera op de streepjescode…</div>'+
+    '<div class="row"><input type="text" inputmode="numeric" placeholder="Of typ de code" autocomplete="off"><button class="actionbtn" data-go>Zoek</button></div>'+
+    '<button data-close>Sluiten</button></div>';
+  document.body.appendChild(el);
+  const st=scanState={el:el,stream:null,reader:null,timer:null,busy:false,stopped:false};
+  const msg=el.querySelector('.scan-msg'), video=el.querySelector('video'), inp=el.querySelector('input');
+  el.querySelector('[data-close]').onclick=closeScan;
+  const go=()=>{ const c=inp.value.replace(/\s+/g,''); if(/^\d{8,14}$/.test(c)) onScanned(c); else msg.textContent='Een streepjescode bestaat uit 8 tot 14 cijfers.'; };
+  el.querySelector('[data-go]').onclick=go; inp.onkeydown=e=>{ if(e.key==='Enter') go(); };
+  if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){ msg.textContent='Camera niet beschikbaar in deze browser — typ de code hieronder.'; return; }
+  try{
+    st.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    if(st.stopped){ st.stream.getTracks().forEach(t=>t.stop()); return; }
+    video.srcObject=st.stream; await video.play();
+    if('BarcodeDetector' in window){
+      const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
+      const tick=async()=>{
+        if(st.stopped) return;
+        try{ const r=await det.detect(video); if(r.length){ onScanned(r[0].rawValue); return; } }catch(e){}
+        st.timer=setTimeout(tick,200);
+      };
+      tick();
+    } else {
+      await loadZxing(); if(st.stopped) return;
+      const Z=window.ZXing, hints=new Map();
+      hints.set(Z.DecodeHintType.POSSIBLE_FORMATS,[Z.BarcodeFormat.EAN_13,Z.BarcodeFormat.EAN_8,Z.BarcodeFormat.UPC_A,Z.BarcodeFormat.UPC_E]);
+      hints.set(Z.DecodeHintType.TRY_HARDER,true);
+      st.reader=new Z.BrowserMultiFormatReader(hints,300);
+      st.reader.decodeFromStream(st.stream,video,(result)=>{ if(result) onScanned(result.getText()); });
+    }
+  }catch(e){
+    msg.textContent=(e&&e.name==='NotAllowedError')?'Geen toestemming voor de camera — typ de code hieronder.':'Scannen lukt niet ('+(e&&e.message||e)+') — typ de code hieronder.';
+  }
+}
+
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='55';
+const APP_VERSION='56';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
-const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1'];
+const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];
 let sb=null, syncCfg=null, syncApplying=false, lastPush={};
 /* wachtwoord -> gedeelde ruimte (cyrb53-hash; het wachtwoord zelf komt niet in de database) */
 function householdFromPass(pw){ let h1=0xdeadbeef,h2=0x41c6ce57; for(let i=0;i<pw.length;i++){ const c=pw.charCodeAt(i); h1=Math.imul(h1^c,2654435761); h2=Math.imul(h2^c,1597334677); } h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909); h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909); return 'hh_'+(h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0'); }
@@ -1795,6 +2023,7 @@ function applyIncoming(k,v){
   else if(k==='custom-recipes-v1'){ customRecipes=v||[]; rebuildIndex(); }
   else if(k==='planner-rounds-v1') roundsAll=v||{};
   else if(k==='favorite-recipes-v1') favoriteRecipes=v||[];
+  else if(k==='products-v1') products=v||[];
   localStorage.setItem(k,JSON.stringify(v));
   syncApplying=false;
 }
@@ -1811,6 +2040,7 @@ function rerender(){
   if(!document.getElementById('shoppingView').classList.contains('hidden')) refreshShopping();
   if(!document.getElementById('recipesView').classList.contains('hidden')){ renderChips(); renderRecipes(); }
   if(!document.getElementById('syncView').classList.contains('hidden')) renderSyncInfo();
+  if(!document.getElementById('productsView').classList.contains('hidden')&&document.getElementById('prodEditCard').classList.contains('hidden')) renderProducts();
 }
 async function syncConnect(cfg){
   if(!(window.supabase&&window.supabase.createClient)) throw new Error('Supabase-bibliotheek niet geladen');
@@ -1863,7 +2093,7 @@ function doLogout(){
   try{ if(sb) sb.removeAllChannels(); }catch(e){}
   sb=null; syncCfg=null;
   localStorage.removeItem('sync-pass-v1');
-  plannerWeeks={}; checksAll={}; manualAll={}; deletedSeedIds=[]; weekServings={}; pantry=[]; pantrySnapshots={}; recipeNotes={}; customRecipes=[]; roundsAll={}; favoriteRecipes=[];
+  plannerWeeks={}; checksAll={}; manualAll={}; deletedSeedIds=[]; weekServings={}; pantry=[]; pantrySnapshots={}; recipeNotes={}; customRecipes=[]; roundsAll={}; favoriteRecipes=[]; products=[];
   SYNC_KEYS.forEach(function(k){ localStorage.removeItem(k); });
   mergeSeedRecipes(); rebuildIndex();
   goHome(); showLogin();
@@ -1955,6 +2185,7 @@ function refreshHome(){
   const set=(id,txt)=>{ const el=document.getElementById(id); if(el) el.textContent=txt; };
 
   set('homeGreet',homeGreeting());
+  set('homeScProdMeta',products.length?products.length+' product'+(products.length===1?'':'en'):'losse producten & scannen');
   const npEl=document.getElementById('homeNamePrompt');
   if(npEl) npEl.classList.toggle('hidden',!homeShouldAskName());
   set('homeWeekTag','Week '+now.week+' \u00b7 deze week');
