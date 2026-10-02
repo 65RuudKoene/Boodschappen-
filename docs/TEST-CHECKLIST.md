@@ -89,6 +89,11 @@ telefoon + laptop, of twee vensters waarvan één incognito).
 - [ ] Filterknoppen in Producten: Alles, Op de lijst en per categorie (alleen
       categorieën met producten); combineert met het zoekveld.
 
+## 6c. Foto-uploads (privacy)
+- [ ] Voeg een recept met een eigen foto toe: de foto laadt, en de
+      foto-link in het recept bevat **geen** `hh_...` (huishoud-id) maar een
+      pad als `.../recipe-photos/p/<24 tekens>.jpg`.
+
 ## 7. PWA / installatie
 - [ ] Na een nieuwe deploy: app ververst zichzelf automatisch naar de
       nieuwe versie (geen oude gecachete versie die blijft hangen).

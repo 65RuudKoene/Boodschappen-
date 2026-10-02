@@ -1644,7 +1644,11 @@ async function uploadRecipePhoto(photo){
     const bytes=new Uint8Array(bin.length);
     for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
     const blob=new Blob([bytes],{type:photo.mediaType||'image/jpeg'});
-    const path=((syncCfg&&syncCfg.household)||'x')+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.jpg';
+    /* Bewust géén huishoud-id in het pad: de bucket is publiek en het id is de sleutel tot de gedeelde data.
+       Een willekeurige, niet te raden naam (96 bits) is genoeg; zie docs/TEST-CHECKLIST.md. */
+    const rnd=new Uint8Array(12);
+    if(window.crypto&&crypto.getRandomValues) crypto.getRandomValues(rnd); else for(let i=0;i<rnd.length;i++) rnd[i]=Math.floor(Math.random()*256);
+    const path='p/'+Array.from(rnd,function(b){ return b.toString(16).padStart(2,'0'); }).join('')+'.jpg';
     const up=await sb.storage.from('recipe-photos').upload(path, blob, {contentType:photo.mediaType||'image/jpeg', upsert:false});
     if(up.error) throw up.error;
     const pub=sb.storage.from('recipe-photos').getPublicUrl(path);
@@ -2107,7 +2111,7 @@ async function startScan(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='59';
+const APP_VERSION='60';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];
