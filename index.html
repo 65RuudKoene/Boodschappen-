@@ -1944,6 +1944,35 @@ function loadZxing(){
     document.head.appendChild(s);
   });
 }
+function zxHints(){
+  const Z=window.ZXing, hints=new Map();
+  hints.set(Z.DecodeHintType.POSSIBLE_FORMATS,[Z.BarcodeFormat.EAN_13,Z.BarcodeFormat.EAN_8,Z.BarcodeFormat.UPC_A,Z.BarcodeFormat.UPC_E]);
+  hints.set(Z.DecodeHintType.TRY_HARDER,true);
+  return hints;
+}
+/* Leest een code uit één foto op (bijna) volle resolutie. Een live camerabeeld is vaak maar 640x480,
+   en daarop lukt een gekreukelde/glanzende verpakking niet; een foto wel. */
+function readAsDataURL(file){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(file); });
+}
+async function decodeBarcodeFromFile(file){
+  /* via data:-URL, want de CSP (img-src) staat geen blob:-afbeeldingen toe */
+  {
+    const img=new Image(); img.src=await readAsDataURL(file); await img.decode();
+    const sc=Math.min(1,3000/Math.max(img.naturalWidth,img.naturalHeight));
+    const c=document.createElement('canvas'); c.width=Math.round(img.naturalWidth*sc); c.height=Math.round(img.naturalHeight*sc);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    if('BarcodeDetector' in window){
+      try{ const r=await new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']}).detect(c); if(r.length) return r[0].rawValue; }catch(e){}
+    }
+    await loadZxing();
+    const Z=window.ZXing, reader=new Z.MultiFormatReader(); reader.setHints(zxHints());
+    for(const Bin of [Z.HybridBinarizer,Z.GlobalHistogramBinarizer]){
+      try{ return reader.decode(new Z.BinaryBitmap(new Bin(new Z.HTMLCanvasElementLuminanceSource(c)))).getText(); }catch(e){}
+    }
+    return null;
+  }
+}
 function closeScan(){
   const st=scanState; scanState=null; if(!st) return;
   st.stopped=true;
@@ -1964,17 +1993,29 @@ async function startScan(){
   if(scanState) return;
   const el=document.createElement('div'); el.className='scan-overlay';
   el.innerHTML='<video playsinline muted></video><div class="scan-frame"></div><div class="scan-bar"><div class="scan-msg">Richt de camera op de streepjescode…</div>'+
-    '<div class="row"><input type="text" inputmode="numeric" placeholder="Of typ de code" autocomplete="off"><button class="actionbtn" data-go>Zoek</button></div>'+
+    '<button class="pickbtn" data-photo style="margin:0">📷 Foto van de code</button><input type="file" accept="image/*" capture="environment" data-file class="hidden">'+
+    '<div class="row"><input type="text" inputmode="numeric" placeholder="Of typ de code" autocomplete="off" data-code><button class="actionbtn" data-go>Zoek</button></div>'+
     '<button data-close>Sluiten</button></div>';
   document.body.appendChild(el);
   const st=scanState={el:el,stream:null,reader:null,timer:null,busy:false,stopped:false};
-  const msg=el.querySelector('.scan-msg'), video=el.querySelector('video'), inp=el.querySelector('input');
+  const msg=el.querySelector('.scan-msg'), video=el.querySelector('video'), inp=el.querySelector('[data-code]');
   el.querySelector('[data-close]').onclick=closeScan;
   const go=()=>{ const c=inp.value.replace(/\s+/g,''); if(/^\d{8,14}$/.test(c)) onScanned(c); else msg.textContent='Een streepjescode bestaat uit 8 tot 14 cijfers.'; };
   el.querySelector('[data-go]').onclick=go; inp.onkeydown=e=>{ if(e.key==='Enter') go(); };
+  const fileInp=el.querySelector('[data-file]');
+  const stopLive=()=>{ try{ if(st.reader) st.reader.reset(); }catch(e){} st.reader=null; try{ if(st.timer) clearTimeout(st.timer); }catch(e){} try{ if(st.stream) st.stream.getTracks().forEach(t=>t.stop()); }catch(e){} st.stream=null; };
+  el.querySelector('[data-photo]').onclick=()=>{ stopLive(); fileInp.value=''; fileInp.click(); };
+  fileInp.onchange=async()=>{
+    const f=fileInp.files&&fileInp.files[0]; if(!f) return;
+    msg.textContent='Foto lezen\u2026';
+    let code=null; try{ code=await decodeBarcodeFromFile(f); }catch(e){}
+    if(st.stopped) return;
+    if(code) onScanned(code); else msg.textContent='Geen streepjescode gevonden in de foto \u2014 probeer het scherper en dichterbij, of typ de code.';
+  };
+  setTimeout(()=>{ if(!st.stopped&&!st.busy&&msg.textContent.indexOf('Richt')===0) msg.textContent='Lukt het niet? Tik op \u2018Foto van de code\u2019 of typ de cijfers.'; },8000);
   if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){ msg.textContent='Camera niet beschikbaar in deze browser — typ de code hieronder.'; return; }
   try{
-    st.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    st.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
     if(st.stopped){ st.stream.getTracks().forEach(t=>t.stop()); return; }
     video.srcObject=st.stream; await video.play();
     if('BarcodeDetector' in window){
@@ -1987,10 +2028,8 @@ async function startScan(){
       tick();
     } else {
       await loadZxing(); if(st.stopped) return;
-      const Z=window.ZXing, hints=new Map();
-      hints.set(Z.DecodeHintType.POSSIBLE_FORMATS,[Z.BarcodeFormat.EAN_13,Z.BarcodeFormat.EAN_8,Z.BarcodeFormat.UPC_A,Z.BarcodeFormat.UPC_E]);
-      hints.set(Z.DecodeHintType.TRY_HARDER,true);
-      st.reader=new Z.BrowserMultiFormatReader(hints,300);
+      const Z=window.ZXing;
+      st.reader=new Z.BrowserMultiFormatReader(zxHints(),300);
       st.reader.decodeFromStream(st.stream,video,(result)=>{ if(result) onScanned(result.getText()); });
     }
   }catch(e){
@@ -1999,7 +2038,7 @@ async function startScan(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='56';
+const APP_VERSION='57';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];
