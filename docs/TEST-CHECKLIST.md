@@ -66,6 +66,21 @@ telefoon + laptop, of twee vensters waarvan één incognito).
 - [ ] Voeg op toestel A een recept toe → verschijnt op toestel B na een
       refresh (of automatisch).
 
+## 6b. Producten (catalogus + streepjescode)
+- [ ] Home → **Producten** opent de catalogus-tab; handmatig een product
+      toevoegen ("Opslaan + op lijst") → staat in de catalogus én onder
+      "Zelf toegevoegd" bij Boodschappen.
+- [ ] **Streepjescode scannen** op de telefoon (Safari/iOS én Chrome/Android):
+      camera-toestemming, code wordt herkend, naam/categorie/foto komen uit
+      Open Food Facts, je kunt ze nog aanpassen vóór opslaan.
+- [ ] Onbekende code → leeg formulier met de code erin; zelf de naam invullen.
+- [ ] Zelfde code nogmaals scannen → staat al in de catalogus, wordt gewoon
+      op de lijst gezet (geen dubbel product).
+- [ ] Code typen in de scanner (zonder camera) werkt ook.
+- [ ] Tik op "✓ Op lijst" haalt het product weer van de lijst; product
+      verwijderen uit de catalogus laat bestaande lijst-items staan.
+- [ ] Catalogus verschijnt op een tweede toestel (sync, sleutel `products-v1`).
+
 ## 7. PWA / installatie
 - [ ] Na een nieuwe deploy: app ververst zichzelf automatisch naar de
       nieuwe versie (geen oude gecachete versie die blijft hangen).
