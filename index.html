@@ -1087,6 +1087,16 @@ function renderShopWrap(key){
 
   /* Per ronde een eigen, in-/uitklapbare boodschappenlijst. */
   const roundsWithRecipes=weekRounds(key).filter(r=>r.recipeIds.length);
+  /* Zelf toegevoegde items (o.a. losse producten) komen onder dezelfde categoriekoppen als de recept-items,
+     in de laatste ronde met items. Zonder zo'n ronde blijven het losse categoriekaarten. Een item zonder
+     categorie wordt op naam geraden (bij producten); lukt dat niet, dan staat het onder "Zelf toegevoegd". */
+  const manByCat={}, manOther=[];
+  manual.forEach(m=>{
+    const c=(m.c && CATS.some(x=>x[0]===m.c)) ? m.c : (m.pid ? guessCatFromName(m.t) : '');
+    if(c && CATS.some(x=>x[0]===c)) (manByCat[c]=manByCat[c]||[]).push(m); else manOther.push(m);
+  });
+  const delMan=(m)=>()=>{ manualAll[key]=(manualAll[key]||[]).filter(x=>x.id!==m.id); if(!manualAll[key].length) delete manualAll[key]; saveManual(); renderShopWrap(key); };
+  const manTargetRound=[...roundsWithRecipes].reverse().find(r=>Object.values(buildShopping(key,r.recipeIds)).some(items=>items.length))||null;
   roundsWithRecipes.forEach((round,idx)=>{
     const recs=round.recipeIds.map(id=>recipeById[id]).filter(Boolean);
     const cats=buildShopping(key,round.recipeIds);
@@ -1117,10 +1127,12 @@ function renderShopWrap(key){
     function onRoundItemToggle(){ if(refreshStat()) celebrateRoundComplete(); }
 
     CATS.forEach(([ckey,label])=>{
-      const items=cats[ckey]; if(!items||!items.length) return;
+      const items=cats[ckey]||[], manItems=(round===manTargetRound)?(manByCat[ckey]||[]):[];
+      if(!items.length && !manItems.length) return;
       const card=document.createElement('div'); card.className='card';
       const h=document.createElement('h2'); h.textContent=label; card.appendChild(h);
       items.forEach(it=>addRow(card, shopText(it), round.id+'|'+it.c+'|'+it.n+'|'+it.u, {pantryName:it.n, onToggle:onRoundItemToggle}));
+      manItems.forEach(m=>addRow(card, m.t, 'm|'+m.id, {delFn:delMan(m)}));
       body.appendChild(card);
     });
 
@@ -1128,11 +1140,8 @@ function renderShopWrap(key){
     wrap.appendChild(section);
   });
 
-  const manByCat={}, manOther=[];
-  manual.forEach(m=>{ if(m.c && CATS.some(c=>c[0]===m.c)) (manByCat[m.c]=manByCat[m.c]||[]).push(m); else manOther.push(m); });
-  const delMan=(m)=>()=>{ manualAll[key]=(manualAll[key]||[]).filter(x=>x.id!==m.id); if(!manualAll[key].length) delete manualAll[key]; saveManual(); renderShopWrap(key); };
 
-  CATS.forEach(([ckey,label])=>{
+  if(!manTargetRound) CATS.forEach(([ckey,label])=>{
     const manItems=manByCat[ckey]||[];
     if(!manItems.length) return;
     const card=document.createElement('div'); card.className='card';
@@ -2131,7 +2140,7 @@ async function startScan(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='64';
+const APP_VERSION='65';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];
