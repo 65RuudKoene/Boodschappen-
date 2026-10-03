@@ -180,6 +180,12 @@ button{border:0;border-radius:12px;padding:10px 12px;font-size:14px;background:v
 .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .pick-round-label{font-size:13px;color:var(--muted);white-space:nowrap;align-self:center;flex:0 0 auto}
 
+.round-pick-layer{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:20px}
+.round-pick{width:100%;max-width:420px;max-height:90vh;overflow:auto}
+.round-pick-opt{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.round-pick-opt:last-of-type{border-bottom:0}
+.round-pick-txt{display:flex;flex-direction:column;gap:2px}
+.round-pick-txt small{color:var(--muted,#888);font-size:13px}
 .confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,12px);max-width:calc(100% - 32px);background:var(--terra-dark);color:var(--cream);font-size:14px;font-weight:600;line-height:1.4;text-align:center;border-radius:999px;padding:14px 22px;box-shadow:0 8px 20px rgba(32,30,29,.28);z-index:9999;opacity:0;transition:opacity .2s ease,transform .2s ease}
 .toast.show{opacity:1;transform:translate(-50%,0)}
@@ -856,9 +862,52 @@ function isRoundExpanded(round){
 }
 function toggleRoundExpanded(round){ if(toggledRounds.has(round.id)) toggledRounds.delete(round.id); else toggledRounds.add(round.id); }
 
+/* Een ronde 'telt' zodra er recepten of losse producten (m.rid) in zitten. */
+function roundHasContent(key,r){ return r.recipeIds.length>0 || (manualAll[key]||[]).some(m=>m.rid===r.id); }
+function shownRounds(key){ return weekRounds(key).filter(r=>roundHasContent(key,r)); }
+function newRoundForProduct(key){
+  const ro=ensureOpenRound(key);
+  if(!roundHasContent(key,ro)) return ro;
+  ro.closedAt=Date.now();
+  const nr={ id:genRoundId(), recipeIds:[], startedAt:Date.now(), closedAt:null };
+  roundsAll[key].push(nr); saveRounds();
+  return nr;
+}
+/* Bij één (of nog geen) ronde horen losse producten daar vanzelf bij; bij meerdere rondes kiest de gebruiker
+   (of start een nieuwe ronde). cb krijgt het ronde-id; annuleren roept cb niet aan. */
+function chooseRoundForProduct(key,cb){
+  const rounds=shownRounds(key);
+  if(rounds.length<=1){ cb((rounds[0]||ensureOpenRound(key)).id); return; }
+  const layer=document.createElement('div'); layer.className='round-pick-layer';
+  const card=document.createElement('div'); card.className='card round-pick';
+  const h=document.createElement('h2'); h.textContent='Bij welke ronde hoort dit product?'; card.appendChild(h);
+  const opts=rounds.map((r,i)=>{
+    const recs=r.recipeIds.map(id=>recipeById[id]).filter(Boolean);
+    return {v:r.id, t:'Ronde '+(i+1)+(r.closedAt?' · afgerond':' · actief'), sub:recs.map(x=>x.title).join(', ')};
+  });
+  opts.push({v:'__new', t:'Nieuwe ronde', sub:'Start een nieuwe ronde voor dit product'});
+  let chosen=(openRoundOf(key)&&rounds.includes(openRoundOf(key)))?openRoundOf(key).id:rounds[rounds.length-1].id;
+  opts.forEach(o=>{
+    const lab=document.createElement('label'); lab.className='round-pick-opt';
+    const rb=document.createElement('input'); rb.type='radio'; rb.name='rpick'; rb.value=o.v; rb.checked=(o.v===chosen);
+    rb.onchange=()=>{ chosen=o.v; };
+    const tx=document.createElement('span'); tx.className='round-pick-txt';
+    const a=document.createElement('strong'); a.textContent=o.t; tx.appendChild(a);
+    if(o.sub){ const b=document.createElement('small'); b.textContent=o.sub; tx.appendChild(b); }
+    lab.append(rb,tx); card.appendChild(lab);
+  });
+  const row=document.createElement('div'); row.className='btnrow';
+  const no=document.createElement('button'); no.type='button'; no.textContent='Annuleren'; no.onclick=()=>layer.remove();
+  const ok=document.createElement('button'); ok.type='button'; ok.className='actionbtn'; ok.textContent='OK';
+  ok.onclick=()=>{ layer.remove(); cb(chosen==='__new'?newRoundForProduct(key).id:chosen); };
+  row.append(no,ok); card.appendChild(row);
+  layer.appendChild(card); layer.onclick=e=>{ if(e.target===layer) layer.remove(); };
+  document.body.appendChild(layer);
+}
+
 function startNewRound(key){
   const ro=ensureOpenRound(key);
-  if(!ro.recipeIds.length) return;
+  if(!roundHasContent(key,ro)) return;
   ro.closedAt=Date.now();
   roundsAll[key].push({ id:genRoundId(), recipeIds:[], startedAt:Date.now(), closedAt:null });
   saveRounds();
@@ -1086,7 +1135,7 @@ function renderShopWrap(key){
   }
 
   /* Per ronde een eigen, in-/uitklapbare boodschappenlijst. */
-  const roundsWithRecipes=weekRounds(key).filter(r=>r.recipeIds.length);
+  const roundsWithRecipes=shownRounds(key);
   /* Zelf toegevoegde items (o.a. losse producten) komen onder dezelfde categoriekoppen als de recept-items,
      in de laatste ronde met items. Zonder zo'n ronde blijven het losse categoriekaarten. Een item zonder
      categorie wordt op naam geraden (bij producten); lukt dat niet, dan staat het onder "Zelf toegevoegd". */
@@ -1096,11 +1145,18 @@ function renderShopWrap(key){
     if(c && CATS.some(x=>x[0]===c)) (manByCat[c]=manByCat[c]||[]).push(m); else manOther.push(m);
   });
   const delMan=(m)=>()=>{ manualAll[key]=(manualAll[key]||[]).filter(x=>x.id!==m.id); if(!manualAll[key].length) delete manualAll[key]; saveManual(); renderShopWrap(key); };
-  const manTargetRound=[...roundsWithRecipes].reverse().find(r=>Object.values(buildShopping(key,r.recipeIds)).some(items=>items.length))||null;
+  const manTargetRound=roundsWithRecipes.length?roundsWithRecipes[roundsWithRecipes.length-1]:null;
+  const shownIds=new Set(roundsWithRecipes.map(r=>r.id));
+  const manByRoundCat={}; /* ronde-id -> categorie -> items; items zonder (geldige) ronde gaan naar de laatste ronde */
+  Object.keys(manByCat).forEach(ck=>manByCat[ck].forEach(m=>{
+    const rid=(m.rid&&shownIds.has(m.rid))?m.rid:(manTargetRound&&manTargetRound.id); if(!rid) return;
+    ((manByRoundCat[rid]=manByRoundCat[rid]||{})[ck]=(manByRoundCat[rid][ck]||[])).push(m);
+  }));
   roundsWithRecipes.forEach((round,idx)=>{
     const recs=round.recipeIds.map(id=>recipeById[id]).filter(Boolean);
     const cats=buildShopping(key,round.recipeIds);
-    if(!Object.values(cats).some(items=>items.length)) return;
+    const rMan=manByRoundCat[round.id]||{};
+    if(!Object.values(cats).some(items=>items.length) && !Object.values(rMan).some(items=>items.length)) return;
 
     const section=document.createElement('div'); section.className='round-section'+(isRoundExpanded(round)?' expanded':'');
     const head=document.createElement('button'); head.className='round-head'; head.type='button';
@@ -1119,7 +1175,8 @@ function renderShopWrap(key){
         total++;
         if((checksAll[key]||{})[round.id+'|'+it.c+'|'+it.n+'|'+it.u]) checked++;
       }));
-      sub.textContent=recs.map(r=>r.emoji+' '+r.title).join(', ')+' · '+checked+'/'+total+' gehaald';
+      Object.values(rMan).forEach(items=>items.forEach(m=>{ total++; if((checksAll[key]||{})['m|'+m.id]) checked++; }));
+      sub.textContent=(recs.length?recs.map(r=>r.emoji+' '+r.title).join(', '):'Losse producten')+' · '+checked+'/'+total+' gehaald';
       return total>0 && checked===total;
     }
     refreshStat();
@@ -1127,12 +1184,12 @@ function renderShopWrap(key){
     function onRoundItemToggle(){ if(refreshStat()) celebrateRoundComplete(); }
 
     CATS.forEach(([ckey,label])=>{
-      const items=cats[ckey]||[], manItems=(round===manTargetRound)?(manByCat[ckey]||[]):[];
+      const items=cats[ckey]||[], manItems=rMan[ckey]||[];
       if(!items.length && !manItems.length) return;
       const card=document.createElement('div'); card.className='card';
       const h=document.createElement('h2'); h.textContent=label; card.appendChild(h);
       items.forEach(it=>addRow(card, shopText(it), round.id+'|'+it.c+'|'+it.n+'|'+it.u, {pantryName:it.n, onToggle:onRoundItemToggle}));
-      manItems.forEach(m=>addRow(card, m.t, 'm|'+m.id, {delFn:delMan(m)}));
+      manItems.forEach(m=>addRow(card, m.t, 'm|'+m.id, {delFn:delMan(m), onToggle:onRoundItemToggle}));
       body.appendChild(card);
     });
 
@@ -1908,11 +1965,13 @@ function fixProdCats(){
 }
 function toggleProdOnList(id){
   const p=products.find(x=>x.id===id); if(!p) return;
-  const key=curKey(), arr=manualAll[key]=manualAll[key]||[];
+  const key=curKey(), arr=manualAll[key]||[];
   const i=arr.findIndex(m=>m.pid===id);
-  if(i>=0){ arr.splice(i,1); if(!arr.length) delete manualAll[key]; }
-  else arr.push({id:genId(),t:prodListText(p),c:p.c||'',pid:id});
-  saveManual(); renderProducts(); refreshHome();
+  if(i>=0){ arr.splice(i,1); if(!arr.length) delete manualAll[key]; saveManual(); renderProducts(); refreshHome(); return; }
+  chooseRoundForProduct(key,rid=>{
+    (manualAll[key]=manualAll[key]||[]).push({id:genId(),t:prodListText(p),c:p.c||'',pid:id,rid:rid});
+    saveManual(); renderProducts(); refreshHome();
+  });
 }
 document.getElementById('prodList').addEventListener('click',function(e){
   const b=e.target.closest('button[data-act]'); if(!b) return;
@@ -2140,7 +2199,7 @@ async function startScan(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='65';
+const APP_VERSION='66';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];
@@ -2349,9 +2408,9 @@ function refreshHome(){
 
   set('homeScPickLabel','Recepten kiezen voor week '+now.week);
   set('homeScPickMeta',n?n+' gekozen':'nog niets');
-  const rounds=weekRounds(key).filter(r=>r.recipeIds.length);
+  const rounds=shownRounds(key);
   const openRound=openRoundOf(key);
-  set('homeScRoundMeta',rounds.length?('ronde '+rounds.length+(openRound&&openRound.recipeIds.length?' actief':' afgerond')):'geen ronde');
+  set('homeScRoundMeta',rounds.length?('ronde '+rounds.length+(openRound&&roundHasContent(key,openRound)?' actief':' afgerond')):'geen ronde');
   set('homeScPantryMeta',pantry.length?pantry.length+' in huis':'leeg');
 
   const sug=homeSuggestion();
