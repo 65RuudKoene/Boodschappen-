@@ -718,6 +718,14 @@ function mergeSeedRecipes(){
 
 /* ---------- VOORRAADKAST (heb ik altijd/al in huis) ---------- */
 function addToPantry(n){ if(!pantry.includes(n)) pantry.push(n); savePantry(); }
+/* Een bewuste tik op 🏠 / ✕ moet ook meteen werken in een week waar al is afgevinkt (en dus een
+   bevroren voorraad-snapshot heeft); anders verandert er niets zichtbaar. */
+function syncPantrySnapshot(key,n,add){
+  const snap=pantrySnapshots[key]; if(!snap) return;
+  const nk=n.trim().toLowerCase();
+  pantrySnapshots[key]=add?(snap.some(p=>p.trim().toLowerCase()===nk)?snap:snap.concat(n)):snap.filter(p=>p.trim().toLowerCase()!==nk);
+  savePantrySnapshots();
+}
 function removeFromPantry(n){ pantry=pantry.filter(x=>x!==n); savePantry(); }
 
 /* ---------- PERSONEN (standaard 2; per week per recept in te stellen) ---------- */
@@ -1072,7 +1080,7 @@ function renderShopWrap(key){
     };
     const lab=document.createElement('label'); lab.className='lab'; lab.htmlFor=cid; lab.textContent=labelText;
     row.append(cb,lab);
-    if(opts.pantryName){ const hv=document.createElement('button'); hv.className='have'; hv.textContent='🏠'; hv.title='Heb ik al in huis'; hv.setAttribute('aria-label','Heb ik al in huis'); hv.onclick=()=>{ addToPantry(opts.pantryName); renderShopWrap(key); }; row.append(hv); }
+    if(opts.pantryName){ const hv=document.createElement('button'); hv.className='have'; hv.textContent='🏠'; hv.title='Heb ik al in huis'; hv.setAttribute('aria-label','Heb ik al in huis'); hv.onclick=()=>{ addToPantry(opts.pantryName); syncPantrySnapshot(key,opts.pantryName,true); renderShopWrap(key); }; row.append(hv); }
     if(opts.delFn){ const del=document.createElement('button'); del.className='del'; del.textContent='✕'; del.setAttribute('aria-label','Verwijderen'); del.onclick=opts.delFn; row.append(del); }
     card.appendChild(row);
   }
@@ -1154,7 +1162,7 @@ function renderShopWrap(key){
     pantry.slice().sort((a,b)=>a.localeCompare(b,'nl')).forEach(n=>{
       const row=document.createElement('div'); row.className='item';
       const lab=document.createElement('span'); lab.className='lab'; lab.textContent=n;
-      const del=document.createElement('button'); del.className='del'; del.textContent='✕'; del.title='Weer op de lijst'; del.setAttribute('aria-label','Weer op de lijst'); del.onclick=()=>{ removeFromPantry(n); renderShopWrap(key); };
+      const del=document.createElement('button'); del.className='del'; del.textContent='✕'; del.title='Weer op de lijst'; del.setAttribute('aria-label','Weer op de lijst'); del.onclick=()=>{ removeFromPantry(n); syncPantrySnapshot(key,n,false); renderShopWrap(key); };
       row.append(lab,del); pcard.appendChild(row);
     });
     wrap.appendChild(pcard);
@@ -2123,7 +2131,7 @@ async function startScan(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='63';
+const APP_VERSION='64';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];
