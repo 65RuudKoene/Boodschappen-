@@ -868,7 +868,7 @@ function startNewRound(key){
 function chipHtml(id,key){
   const r=recipeById[id]; if(!r) return '';
   const s=getWeekServings(key,id);
-  return '<span class="selchip"><button class="sc-open" data-id="'+id+'">'+r.emoji+' '+r.title+'</button><span class="mini"><button class="s-minus" data-id="'+id+'" aria-label="Minder personen"></button><span class="n">'+s+'p</span><button class="s-plus" data-id="'+id+'" aria-label="Meer personen"></button></span><button class="sc-x" data-id="'+id+'" aria-label="Uit de week halen">✕</button></span>';
+  return '<span class="selchip"><button class="sc-open" data-id="'+esc(id)+'">'+esc(r.emoji)+' '+esc(r.title)+'</button><span class="mini"><button class="s-minus" data-id="'+id+'" aria-label="Minder personen"></button><span class="n">'+s+'p</span><button class="s-plus" data-id="'+id+'" aria-label="Meer personen"></button></span><button class="sc-x" data-id="'+id+'" aria-label="Uit de week halen">✕</button></span>';
 }
 function renderSel(key){
   const el=document.getElementById('selRecipes'), ids=plannerWeeks[key]||[];
@@ -967,7 +967,7 @@ function renderPickList(key){
   const el=document.getElementById('pickList'), ids=plannerWeeks[key]||[];
   const list=allRecipes().filter(r=>(pickMeal==='alle'||r.meal===pickMeal) && (pickMeal!=='diner'||pickDinnerType==='alle'||inferDinnerType(r)===pickDinnerType) && (pickMeal!=='lunch'||pickLunchType==='alle'||inferLunchType(r)===pickLunchType) && (!pickFavOnly||isFavorite(r.id)) && pickMatches(r));
   if(!list.length){ el.innerHTML='<div class="empty">'+(pickFavOnly?'Nog geen favorieten in deze categorie.':'Geen recepten gevonden.')+'</div>'; return; }
-  el.innerHTML=list.map(r=>'<label class="pick-item"><input type="checkbox" data-id="'+r.id+'"'+(ids.includes(r.id)?' checked':'')+'><span>'+r.emoji+' '+r.title+'</span><button type="button" class="pick-fav'+(isFavorite(r.id)?' active':'')+'" data-fav-id="'+r.id+'" aria-label="Favoriet">'+(isFavorite(r.id)?'★':'☆')+'</button></label>').join('');
+  el.innerHTML=list.map(r=>'<label class="pick-item"><input type="checkbox" data-id="'+esc(r.id)+'"'+(ids.includes(r.id)?' checked':'')+'><span>'+esc(r.emoji)+' '+esc(r.title)+'</span><button type="button" class="pick-fav'+(isFavorite(r.id)?' active':'')+'" data-fav-id="'+esc(r.id)+'" aria-label="Favoriet">'+(isFavorite(r.id)?'★':'☆')+'</button></label>').join('');
   el.querySelectorAll('input').forEach(cb=>{ cb.onchange=()=>toggleRecipeInWeek(key,cb.dataset.id,cb.checked); });
   el.querySelectorAll('.pick-fav').forEach(b=>{
     b.onclick=(e)=>{
@@ -1319,7 +1319,7 @@ function renderRecipes(){
   const root=document.getElementById('recipes'); root.innerHTML='';
   const list=allRecipes().filter(r=>(mealFilter==='alle'||r.meal===mealFilter) && (mealFilter!=='diner'||dinnerType==='alle'||inferDinnerType(r)===dinnerType) && (mealFilter!=='lunch'||lunchType==='alle'||inferLunchType(r)===lunchType) && (!favOnly||isFavorite(r.id)) && matchesSearch(r));
   if(!list.length){
-    root.innerHTML='<div class="empty">'+(searchQuery?'Geen recepten gevonden voor \u201c'+searchQuery+'\u201d.':'Nog geen recepten in deze categorie.<br>Stuur er een naar mij, dan zet ik \u2019m erbij.')+'</div>';
+    root.innerHTML='<div class="empty">'+(searchQuery?'Geen recepten gevonden voor \u201c'+esc(searchQuery)+'\u201d.':'Nog geen recepten in deze categorie.<br>Stuur er een naar mij, dan zet ik \u2019m erbij.')+'</div>';
     return;
   }
   list.forEach(r=>{
@@ -1329,7 +1329,7 @@ function renderRecipes(){
     const headMain=document.createElement('button'); headMain.className='recipe-head-main'; headMain.type='button';
     const headThumb=document.createElement('span'); headThumb.className='recipe-head-thumb'; headThumb.style.setProperty('--h1','hsl('+h1+' 55% 55%)'); headThumb.style.setProperty('--h2','hsl('+h2+' 55% 42%)'); headThumb.textContent=r.emoji||'🍽️';
     const headSub=(r.meal&&MEALS[r.meal]?MEALS[r.meal]:'')+(r.time?' · '+r.time:'');
-    const headInfo=document.createElement('span'); headInfo.className='recipe-head-info'; headInfo.innerHTML='<span class="recipe-head-title">'+r.title+'</span><span class="recipe-head-sub">'+headSub+'</span>';
+    const headInfo=document.createElement('span'); headInfo.className='recipe-head-info'; headInfo.innerHTML='<span class="recipe-head-title">'+esc(r.title)+'</span><span class="recipe-head-sub">'+esc(headSub)+'</span>';
     const headChev=document.createElement('span'); headChev.className='chev'; headChev.textContent='›';
     headMain.append(headThumb,headInfo,headChev);
     headMain.onclick=()=>{ card.classList.toggle('expanded'); };
@@ -1347,7 +1347,7 @@ function renderRecipes(){
     thumb.style.setProperty('--h1','hsl('+h1+' 55% 55%)');
     thumb.style.setProperty('--h2','hsl('+h2+' 55% 42%)');
     const ph=document.createElement('div'); ph.className='ph';
-    ph.innerHTML='<div class="ph-emoji">'+(r.emoji||'🍽️')+'</div>'+r.title;
+    ph.innerHTML='<div class="ph-emoji">'+esc(r.emoji||'🍽️')+'</div>'+esc(r.title);
     thumb.append(ph,img);
     const body=document.createElement('div'); body.className='body';
     let cardServ=BASE_SERV;
@@ -1355,9 +1355,9 @@ function renderRecipes(){
       '<div class="serv"><span class="lbl">Aantal personen</span><span class="stepper"><button class="minus" aria-label="Minder personen"></button><span class="cnt">'+servLabel(cardServ)+'</span><button class="plus" aria-label="Meer personen"></button></span></div>'+
       '<div class="serv"><span class="lbl">Maaltijd</span><select class="mealSel" aria-label="Maaltijd">'+Object.entries(MEALS).map(([k,label])=>'<option value="'+k+'"'+(r.meal===k?' selected':'')+'>'+label+'</option>').join('')+'</select></div>'+
       '<div class="badge serv-note">Alleen om te bekijken. Voor de boodschappenlijst stel je het aantal personen per week in.</div>'+
-      '<h3>Ingrediënten</h3><ul class="ingList">'+r.ing.map(g=>'<li>'+ingText(scaleGroup(g,cardServ))+'</li>').join('')+'</ul>'+
-      '<h3>Bereiding</h3><ol class="stepList">'+scaleSteps(r,cardServ).map(x=>'<li>'+x+'</li>').join('')+'</ol>'+
-      (r.source?'<a class="src" href="'+esc(r.source)+'" target="_blank" rel="noopener noreferrer">Bekijk origineel recept ↗</a>':'');
+      '<h3>Ingrediënten</h3><ul class="ingList">'+r.ing.map(g=>'<li>'+esc(ingText(scaleGroup(g,cardServ)))+'</li>').join('')+'</ul>'+
+      '<h3>Bereiding</h3><ol class="stepList">'+scaleSteps(r,cardServ).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ol>'+
+      (safeUrl(r.source)?'<a class="src" href="'+esc(safeUrl(r.source))+'" target="_blank" rel="noopener noreferrer">Bekijk origineel recept ↗</a>':'');
     const noteWrap=document.createElement('div'); noteWrap.className='note-wrap';
     const nl=document.createElement('label'); nl.textContent='📝 Mijn notitie'; nl.htmlFor='note-'+r.id;
     const ta=document.createElement('textarea'); ta.id='note-'+r.id; ta.placeholder='Bijv. lekker met extra knoflook…'; ta.value=recipeNotes[r.id]||'';
@@ -1372,8 +1372,8 @@ function renderRecipes(){
       cardServ=clampServ(ns);
       body.querySelector('.cnt').textContent=servLabel(cardServ);
       body.querySelector('.servTxt').textContent=servLabel(cardServ);
-      body.querySelector('.ingList').innerHTML=r.ing.map(g=>'<li>'+ingText(scaleGroup(g,cardServ))+'</li>').join('');
-      body.querySelector('.stepList').innerHTML=scaleSteps(r,cardServ).map(x=>'<li>'+x+'</li>').join('');
+      body.querySelector('.ingList').innerHTML=r.ing.map(g=>'<li>'+esc(ingText(scaleGroup(g,cardServ)))+'</li>').join('');
+      body.querySelector('.stepList').innerHTML=scaleSteps(r,cardServ).map(x=>'<li>'+esc(x)+'</li>').join('');
       minus.disabled=cardServ<=MIN_SERV;
     };
     minus.disabled=cardServ<=MIN_SERV;
@@ -1558,6 +1558,7 @@ function showAdd(){
 let previewRecipe=null, previewSource='', addMode='url', addPhotos=[], addOwnPhoto=null, previewAssumedServ=BASE_SERV;
 const MAX_ADD_PHOTOS=4;
 function slugify(t){ return (t||'recept').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||'recept'; }
+function safeUrl(u){ return (typeof u==='string'&&/^https?:\/\//i.test(u.trim()))?u.trim():''; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 function validRecipe(r){ return r && typeof r.title==='string' && Array.isArray(r.ing) && Array.isArray(r.steps) && r.ing.length && r.steps.length; }
 function setAddMode(mode){
