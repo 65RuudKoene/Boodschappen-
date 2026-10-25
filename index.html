@@ -644,8 +644,10 @@ function rebuildIndex(){ recipeById=Object.fromEntries(allRecipes().map(r=>[r.id
 rebuildIndex();
 
 /* ---------- HELPERS ---------- */
+/* Week loopt van zaterdag t/m vrijdag: za+zo tellen mee als begin van de
+   volgende ISO-week (vandaar +2 dagen), zodat het weeknummer dat van ma–vr blijft. */
 function isoWeek(d){
-  const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()+2));
   const day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day);
   const ys=new Date(Date.UTC(t.getUTCFullYear(),0,1));
   return {year:t.getUTCFullYear(), week:Math.ceil(((t-ys)/86400000+1)/7)};
@@ -663,6 +665,11 @@ function shopText(it){ return it.hasNum ? [fmtQty(it.q), it.u, it.n].filter(Bool
 const now=isoWeek(new Date());
 let viewDate=new Date();
 function shiftWeek(d,n){ const x=new Date(d); x.setDate(x.getDate()+n*7); return x; }
+function weekRange(d){
+  const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()-((d.getDay()+1)%7)), e=new Date(s); e.setDate(s.getDate()+6);
+  const f=x=>x.getDate()+' '+['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][x.getMonth()];
+  return 'za '+f(s)+' – vr '+f(e);
+}
 
 /* ---------- STORAGE ---------- */
 let plannerWeeks=JSON.parse(localStorage.getItem('planner-weeks-v1')||'{}');
@@ -788,7 +795,7 @@ function curKey(){ const yw=isoWeek(viewDate); return yw.year+'-W'+yw.week; }
 
 function renderWeekbar(){
   const yw=isoWeek(viewDate);
-  document.getElementById('weekLabel').innerHTML='Week '+yw.week+' · '+yw.year+((yw.year===now.year&&yw.week===now.week)?'<span class="thisweek">deze week</span>':'');
+  document.getElementById('weekLabel').innerHTML='Week '+yw.week+' · '+weekRange(viewDate)+((yw.year===now.year&&yw.week===now.week)?'<span class="thisweek">deze week</span>':'');
   const cw=document.getElementById('copyWeekBtn'), src=plannerWeeks[prevWeekKey()]||[];
   if(src.length){ cw.classList.remove('hidden'); cw.textContent='↩︎ Kopieer vorige week ('+src.length+' recept'+(src.length>1?'en':'')+')'; }
   else cw.classList.add('hidden');
@@ -2199,7 +2206,7 @@ async function startScan(){
 }
 
 /* ---------- GEDEELD (live sync via Supabase) ---------- */
-const APP_VERSION='66';
+const APP_VERSION='67';
 const SUPA_URL='https://uutvmhoplasohgucxopa.supabase.co';
 const SUPA_KEY='sb_publishable_NovRjFhaUMhu_LYHT2eV8g_h-pM525j';
 const SYNC_KEYS=['planner-weeks-v1','boodschappen-checks-v3','planner-manual-v1','hidden-recipes-v1','week-servings-v1','pantry-v1','pantry-snapshots-v1','recipe-notes-v1','custom-recipes-v1','planner-rounds-v1','favorite-recipes-v1','products-v1'];
